@@ -1,0 +1,13 @@
+[package]
+name = "taps"
+version = "0.1.0"
+authors = ["stuart <stu@reilly-family.co.uk>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# Async/await compatable tokio is not on crates.io
+tokio = { git = "https://github.com/tokio-rs/tokio", tag = "tokio-0.2.0-alpha.5" }
+snafu = { version = "0.5", features = ["unstable-futures"]}
+tokio-dns-unofficial = "0.4"
