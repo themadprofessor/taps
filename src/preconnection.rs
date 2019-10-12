@@ -1,3 +1,25 @@
+//! A [Preconnection](struct.Preconnection.html) represents a potential connection.
+//!
+//! It has state that describes the properties of a Connection that may exist in the future.
+//! This state consists of Local Endpoint, Remote Endpoint, Transport Properties and security
+//! parameters.
+//!
+//! The [Preconnection](struct.Preconnection.html)'s L and R type parameters are used to determine
+//! how a [Preconnection](struct.Preconnection.html) can be used to create Connections or Listeners.
+//! The L and R type parameters represent the Local Endpoint and Remote Endpoint respectively.
+//!
+//! If a [Preconnection](struct.Preconnection.html) has a [NoEndpoint](struct.NoEndpoint.html) as
+//! its L type parameter, the [Preconnection](struct.Preconnection.html) cannot be used to create a
+//! Listener via the listen method.
+//!
+//! If a [Preconnection](struct.Preconnection.html) has a [NoEndpoint](struct.NoEndpoint.html) as
+//! its R type parameter, the [Preconnection](struct.Preconnection.html) cannot be used to create a
+//! Connection via the initiate method.
+//!
+//! If a [Preconnection](struct.Preconnection.html) has a NoEndpoint as both its L and R type
+//! parameters, the [Preconnection](struct.Preconnection.html) cannot be used to create a Connection
+//! via the rendezvous method.
+
 use snafu::{Snafu, ResultExt};
 use tokio_dns::{Endpoint, ToEndpoint};
 use std::convert::TryFrom;
@@ -7,11 +29,8 @@ use std::marker::PhantomData;
 /// [Preconnection's](struct.Preconnection.html) endpoints.
 pub trait EndpointState {}
 
-/// Type used to represent a missing [LocalEndpoint](struct.LocalEndpoint.html) or
-/// [RemoteEndpoint](struct.RemoteEndpoint.html) in a [Preconnection](struct.Preconnection.html).
+/// Type used to represent a missing endpoint for a [Preconnection](struct.Preconnection.html).
 pub struct NoEndpoint;
-pub struct LocalEndpoint<'a, T>(T, &'a PhantomData<T>) where T: ToEndpoint<'a>;
-pub struct RemoteEndpoint<'a, T>(T, &'a PhantomData<T>) where T: ToEndpoint<'a>;
 
 /// A configuration type use to configure how to create a Connection.
 pub struct Preconnection<L, R> where L: EndpointState, R: EndpointState {
@@ -20,8 +39,7 @@ pub struct Preconnection<L, R> where L: EndpointState, R: EndpointState {
 }
 
 impl EndpointState for NoEndpoint {}
-impl <'a, T> EndpointState for LocalEndpoint<'a, T> where T: ToEndpoint<'a> {}
-impl <'a, T> EndpointState for RemoteEndpoint<'a, T> where T: ToEndpoint<'a> {}
+impl <'a, T> EndpointState for T where T: ToEndpoint<'a> {}
 
 impl Preconnection<NoEndpoint, NoEndpoint> {
     /// Create a new Preconnection which has no endpoints specified.
@@ -29,7 +47,7 @@ impl Preconnection<NoEndpoint, NoEndpoint> {
     /// # Examples
     ///
     /// ```rust
-    /// # use crate::taps::preconnection::*;
+    /// # use taps::preconnection::*;
     /// let preconnection = Preconnection::new();
     /// ```
     pub fn new() -> Self {
@@ -44,9 +62,17 @@ impl Preconnection<NoEndpoint, NoEndpoint> {
 impl <L, R> Preconnection<L, R> where L: EndpointState, R: EndpointState {
     /// Specify the local endpoint which will be used when creating a Connection from this
     /// [Preconnection](struct.Preconnection.html).
-    pub fn local_endpoint<'a, T>(self, local: T) -> Preconnection<LocalEndpoint<'a, T>, R> where T: ToEndpoint<'a> {
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use taps::preconnection::*;
+    /// let preconnection = Preconnection::new()
+    ///     .local_endpoint("127.0.0.1:80");
+    /// ```
+    pub fn local_endpoint<'a, T>(self, local: T) -> Preconnection<T, R> where T: ToEndpoint<'a> {
         Preconnection {
-            local: Box::new(LocalEndpoint(local, &PhantomData)),
+            local: Box::new(local),
             remote: self.remote
         }
     }
@@ -56,10 +82,18 @@ impl <L, R> Preconnection<L, R> where L: EndpointState, R: EndpointState {
     ///
     /// No name resolution is done by this method. See resolve for eager resolution or initiate for
     /// late resolution.
-    pub fn remote_endpoint<'a, T>(self, remote: T) -> Preconnection<L, RemoteEndpoint<'a, T>> where T: ToEndpoint<'a> {
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use taps::preconnection::*;
+    /// let preconnection = Preconnection::new()
+    ///     .remote_endpoint("example.com:80");
+    /// ```
+    pub fn remote_endpoint<'a, T>(self, remote: T) -> Preconnection<L, T> where T: ToEndpoint<'a> {
         Preconnection {
             local: self.local,
-            remote: Box::new(RemoteEndpoint(remote, &PhantomData)),
+            remote: Box::new(remote),
         }
     }
 }
