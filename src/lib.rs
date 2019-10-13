@@ -1,4 +1,5 @@
 pub mod preconnection;
+pub mod properties;
 
 #[cfg(test)]
 mod tests {

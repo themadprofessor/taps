@@ -20,26 +20,29 @@
 //! parameters, the [Preconnection](struct.Preconnection.html) cannot be used to create a Connection
 //! via the rendezvous method.
 
-use snafu::{Snafu, ResultExt};
-use tokio_dns::{Endpoint, ToEndpoint};
-use std::convert::TryFrom;
-use std::marker::PhantomData;
+use std::fmt;
+use tokio_dns::ToEndpoint;
 
 /// A marker trait to specify types which represent the state of a
 /// [Preconnection's](struct.Preconnection.html) endpoints.
 pub trait EndpointState {}
 
 /// Type used to represent a missing endpoint for a [Preconnection](struct.Preconnection.html).
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct NoEndpoint;
 
 /// A configuration type use to configure how to create a Connection.
-pub struct Preconnection<L, R> where L: EndpointState, R: EndpointState {
+pub struct Preconnection<L, R>
+where
+    L: EndpointState,
+    R: EndpointState,
+{
     local: Box<L>,
-    remote: Box<R>
+    remote: Box<R>,
 }
 
 impl EndpointState for NoEndpoint {}
-impl <'a, T> EndpointState for T where T: ToEndpoint<'a> {}
+impl<'a, T> EndpointState for T where T: ToEndpoint<'a> {}
 
 impl Preconnection<NoEndpoint, NoEndpoint> {
     /// Create a new Preconnection which has no endpoints specified.
@@ -54,12 +57,58 @@ impl Preconnection<NoEndpoint, NoEndpoint> {
         // Note: Box::new does not alloc when given 0-sized type.
         Preconnection {
             local: Box::new(NoEndpoint),
-            remote : Box::new(NoEndpoint),
+            remote: Box::new(NoEndpoint),
         }
     }
 }
 
-impl <L, R> Preconnection<L, R> where L: EndpointState, R: EndpointState {
+impl Default for Preconnection<NoEndpoint, NoEndpoint> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<L, R> fmt::Debug for Preconnection<L, R>
+where
+    L: EndpointState + fmt::Debug,
+    R: EndpointState + fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        f.debug_struct("Preconnection")
+            .field("local", &self.local)
+            .field("remote", &self.remote)
+            .finish()
+    }
+}
+
+impl<L, R> Clone for Preconnection<L, R>
+where
+    L: EndpointState + Clone,
+    R: EndpointState + Clone,
+{
+    fn clone(&self) -> Self {
+        Preconnection {
+            local: self.local.clone(),
+            remote: self.remote.clone(),
+        }
+    }
+}
+
+impl<L, R> PartialEq for Preconnection<L, R>
+where
+    L: EndpointState + PartialEq,
+    R: EndpointState + PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.local == other.local && self.remote == other.remote
+    }
+}
+
+impl<L, R> Preconnection<L, R>
+where
+    L: EndpointState,
+    R: EndpointState,
+{
     /// Specify the local endpoint which will be used when creating a Connection from this
     /// [Preconnection](struct.Preconnection.html).
     ///
@@ -70,10 +119,13 @@ impl <L, R> Preconnection<L, R> where L: EndpointState, R: EndpointState {
     /// let preconnection = Preconnection::new()
     ///     .local_endpoint("127.0.0.1:80");
     /// ```
-    pub fn local_endpoint<'a, T>(self, local: T) -> Preconnection<T, R> where T: ToEndpoint<'a> {
+    pub fn local_endpoint<'a, T>(self, local: T) -> Preconnection<T, R>
+    where
+        T: ToEndpoint<'a>,
+    {
         Preconnection {
             local: Box::new(local),
-            remote: self.remote
+            remote: self.remote,
         }
     }
 
@@ -90,7 +142,10 @@ impl <L, R> Preconnection<L, R> where L: EndpointState, R: EndpointState {
     /// let preconnection = Preconnection::new()
     ///     .remote_endpoint("example.com:80");
     /// ```
-    pub fn remote_endpoint<'a, T>(self, remote: T) -> Preconnection<L, T> where T: ToEndpoint<'a> {
+    pub fn remote_endpoint<'a, T>(self, remote: T) -> Preconnection<L, T>
+    where
+        T: ToEndpoint<'a>,
+    {
         Preconnection {
             local: self.local,
             remote: Box::new(remote),
