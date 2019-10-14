@@ -58,6 +58,7 @@ pub enum Direction {
     Receiver,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct TransportProperties {
     select_props: EnumMap<SelectionProperty, Preference>,
     direction: Direction,
@@ -136,7 +137,7 @@ impl TransportProperties {
 
     /// Specify the given [SelectionProperty](enum.SelectionProperty.html) should have the default
     /// [Preference](enum.Preference.html).
-    pub fn default(&mut self, prop: SelectionProperty) -> &mut Self {
+    pub fn default_prop(&mut self, prop: SelectionProperty) -> &mut Self {
         let pref = DEFAULT[prop];
         self.add(prop, pref)
     }

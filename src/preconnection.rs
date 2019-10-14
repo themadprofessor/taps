@@ -22,6 +22,7 @@
 
 use std::fmt;
 use tokio_dns::ToEndpoint;
+use crate::properties::TransportProperties;
 
 /// A marker trait to specify types which represent the state of a
 /// [Preconnection's](struct.Preconnection.html) endpoints.
@@ -31,7 +32,7 @@ pub trait EndpointState {}
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct NoEndpoint;
 
-/// A configuration type use to configure how to create a Connection.
+/// A configuration type used to configure how to create a Connection.
 pub struct Preconnection<L, R>
 where
     L: EndpointState,
@@ -39,6 +40,7 @@ where
 {
     local: Box<L>,
     remote: Box<R>,
+    trans_props: TransportProperties,
 }
 
 impl EndpointState for NoEndpoint {}
@@ -51,20 +53,16 @@ impl Preconnection<NoEndpoint, NoEndpoint> {
     ///
     /// ```rust
     /// # use taps::preconnection::*;
-    /// let preconnection = Preconnection::new();
+    /// # use taps::properties::TransportProperties;
+    /// let preconnection = Preconnection::new(TransportProperties::default());
     /// ```
-    pub fn new() -> Self {
+    pub fn new(props: TransportProperties) -> Self {
         // Note: Box::new does not alloc when given 0-sized type.
         Preconnection {
             local: Box::new(NoEndpoint),
             remote: Box::new(NoEndpoint),
+            trans_props: props
         }
-    }
-}
-
-impl Default for Preconnection<NoEndpoint, NoEndpoint> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -90,6 +88,7 @@ where
         Preconnection {
             local: self.local.clone(),
             remote: self.remote.clone(),
+            trans_props: self.trans_props.clone()
         }
     }
 }
@@ -116,7 +115,8 @@ where
     ///
     /// ```rust
     /// # use taps::preconnection::*;
-    /// let preconnection = Preconnection::new()
+    /// # use taps::properties::TransportProperties;
+    /// let preconnection = Preconnection::new(TransportProperties::default())
     ///     .local_endpoint("127.0.0.1:80");
     /// ```
     pub fn local_endpoint<'a, T>(self, local: T) -> Preconnection<T, R>
@@ -126,6 +126,7 @@ where
         Preconnection {
             local: Box::new(local),
             remote: self.remote,
+            trans_props: self.trans_props
         }
     }
 
@@ -139,7 +140,8 @@ where
     ///
     /// ```rust
     /// # use taps::preconnection::*;
-    /// let preconnection = Preconnection::new()
+    /// # use taps::properties::TransportProperties;
+    /// let preconnection = Preconnection::new(TransportProperties::default())
     ///     .remote_endpoint("example.com:80");
     /// ```
     pub fn remote_endpoint<'a, T>(self, remote: T) -> Preconnection<L, T>
@@ -149,6 +151,7 @@ where
         Preconnection {
             local: self.local,
             remote: Box::new(remote),
+            trans_props: self.trans_props
         }
     }
 }
