@@ -112,16 +112,6 @@ pub enum SelectionProperty {
     /// change.
     CongestionControl,
 
-    /// Interface instance or type
-    ///
-    /// TODO
-    Interface,
-
-    /// Provisioning domain instance or type
-    ///
-    /// TODO
-    Pvd,
-
     /// Parallel use of multiple paths
     ///
     /// This property specifies whether an application considers it useful to transfer data across

@@ -18,8 +18,6 @@ lazy_static! {
         SelectionProperty::PerMsgChecksumLenSend => Preference::Require,
         SelectionProperty::PerMsgChecksumLenRecv => Preference::Require,
         SelectionProperty::CongestionControl => Preference::Require,
-        SelectionProperty::Interface => Preference::Ignore,
-        SelectionProperty::Pvd => Preference::Ignore,
         SelectionProperty::Multipath => Preference::Prefer,
         SelectionProperty::RetransmitNotify => Preference::Ignore,
         SelectionProperty::SoftErrorNotify => Preference::Ignore,
