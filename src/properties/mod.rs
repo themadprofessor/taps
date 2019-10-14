@@ -1,4 +1,4 @@
-use enum_map::{EnumMap, enum_map};
+use enum_map::{enum_map, EnumMap};
 use lazy_static::lazy_static;
 
 use std::fmt;
@@ -9,21 +9,21 @@ mod selection;
 
 lazy_static! {
     static ref DEFAULT: EnumMap<SelectionProperty, Preference> = enum_map! {
-                SelectionProperty::Reliability => Preference::Require,
-                SelectionProperty::PreserveMsgBoundaries => Preference::Prefer,
-                SelectionProperty::PerMsgReliability => Preference::Ignore,
-                SelectionProperty::PreserveOrder => Preference::Require,
-                SelectionProperty::ZeroRttMsg => Preference::Ignore,
-                SelectionProperty::Multistreaming => Preference::Prefer,
-                SelectionProperty::PerMsgChecksumLenSend => Preference::Require,
-                SelectionProperty::PerMsgChecksumLenRecv => Preference::Require,
-                SelectionProperty::CongestionControl => Preference::Require,
-                SelectionProperty::Interface => Preference::Ignore,
-                SelectionProperty::Pvd => Preference::Ignore,
-                SelectionProperty::Multipath => Preference::Prefer,
-                SelectionProperty::RetransmitNotify => Preference::Ignore,
-                SelectionProperty::SoftErrorNotify => Preference::Ignore,
-            };
+        SelectionProperty::Reliability => Preference::Require,
+        SelectionProperty::PreserveMsgBoundaries => Preference::Prefer,
+        SelectionProperty::PerMsgReliability => Preference::Ignore,
+        SelectionProperty::PreserveOrder => Preference::Require,
+        SelectionProperty::ZeroRttMsg => Preference::Ignore,
+        SelectionProperty::Multistreaming => Preference::Prefer,
+        SelectionProperty::PerMsgChecksumLenSend => Preference::Require,
+        SelectionProperty::PerMsgChecksumLenRecv => Preference::Require,
+        SelectionProperty::CongestionControl => Preference::Require,
+        SelectionProperty::Interface => Preference::Ignore,
+        SelectionProperty::Pvd => Preference::Ignore,
+        SelectionProperty::Multipath => Preference::Prefer,
+        SelectionProperty::RetransmitNotify => Preference::Ignore,
+        SelectionProperty::SoftErrorNotify => Preference::Ignore,
+    };
 }
 
 /// The preference an application has for a specific property.
@@ -55,21 +55,19 @@ pub enum Direction {
     Sender,
 
     /// The connection must support receiving data.
-    Receiver
+    Receiver,
 }
-
-
 
 pub struct TransportProperties {
     select_props: EnumMap<SelectionProperty, Preference>,
-    direction: Direction
+    direction: Direction,
 }
 
 impl Default for TransportProperties {
     fn default() -> Self {
         TransportProperties {
-            select_props: DEFAULT.clone(),
-            direction: Default::default()
+            select_props: *DEFAULT,
+            direction: Default::default(),
         }
     }
 }
