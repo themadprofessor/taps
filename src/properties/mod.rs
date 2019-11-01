@@ -4,8 +4,10 @@ use lazy_static::lazy_static;
 use std::fmt;
 
 pub use selection::SelectionProperty;
+pub use security::SecurityParameters;
 
 mod selection;
+mod security;
 
 lazy_static! {
     static ref DEFAULT: EnumMap<SelectionProperty, Preference> = enum_map! {
