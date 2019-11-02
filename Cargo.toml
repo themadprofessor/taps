@@ -8,8 +8,9 @@ edition = "2018"
 
 [dependencies]
 # Async/await compatable tokio is not on crates.io
-tokio = { git = "https://github.com/tokio-rs/tokio", tag = "tokio-0.2.0-alpha.6" }
+tokio = { git = "https://github.com/tokio-rs/tokio", tag = "tokio-0.2.0-alpha.5" }
 snafu = { version = "0.5", features = ["unstable-futures"]}
 tokio-dns-unofficial = "0.4"
 lazy_static = "1.4"
 enum-map = "0.6"
+serde = "1.0"

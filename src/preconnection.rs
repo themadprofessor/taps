@@ -20,9 +20,12 @@
 //! parameters, the [Preconnection](struct.Preconnection.html) cannot be used to create a Connection
 //! via the rendezvous method.
 
-use std::fmt;
-use tokio_dns::ToEndpoint;
 use crate::properties::TransportProperties;
+use serde::export::PhantomData;
+use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::time::Duration;
+use tokio_dns::ToEndpoint;
 
 /// A marker trait to specify types which represent the state of a
 /// [Preconnection's](struct.Preconnection.html) endpoints.
@@ -33,20 +36,28 @@ pub trait EndpointState {}
 pub struct NoEndpoint;
 
 /// A configuration type used to configure how to create a Connection.
-pub struct Preconnection<L, R>
+///
+/// # Generic Types
+/// - T: The type which is going to be sent/received over the Connection
+/// - L: The type of the local endpoint. It is [NoEndpoint](struct.NoEndpoint.html) if no local
+/// endpoint is given
+/// - R: The type of the remote endpoint. It is [NoEndpoint](struct.NoEndpoint.html) if no remote
+/// endpoint is given
+pub struct Preconnection<T, L, R>
 where
     L: EndpointState,
     R: EndpointState,
 {
-    local: Box<L>,
-    remote: Box<R>,
+    local: L,
+    remote: R,
     trans_props: TransportProperties,
+    _phantom: PhantomData<T>,
 }
 
 impl EndpointState for NoEndpoint {}
 impl<'a, T> EndpointState for T where T: ToEndpoint<'a> {}
 
-impl Preconnection<NoEndpoint, NoEndpoint> {
+impl<T> Preconnection<T, NoEndpoint, NoEndpoint> {
     /// Create a new Preconnection which has no endpoints specified.
     ///
     /// # Examples
@@ -59,14 +70,15 @@ impl Preconnection<NoEndpoint, NoEndpoint> {
     pub fn new(props: TransportProperties) -> Self {
         // Note: Box::new does not alloc when given 0-sized type.
         Preconnection {
-            local: Box::new(NoEndpoint),
-            remote: Box::new(NoEndpoint),
-            trans_props: props
+            local: NoEndpoint,
+            remote: NoEndpoint,
+            trans_props: props,
+            _phantom: PhantomData,
         }
     }
 }
 
-impl<L, R> fmt::Debug for Preconnection<L, R>
+impl<T, L, R> fmt::Debug for Preconnection<T, L, R>
 where
     L: EndpointState + fmt::Debug,
     R: EndpointState + fmt::Debug,
@@ -79,7 +91,7 @@ where
     }
 }
 
-impl<L, R> Clone for Preconnection<L, R>
+impl<T, L, R> Clone for Preconnection<T, L, R>
 where
     L: EndpointState + Clone,
     R: EndpointState + Clone,
@@ -88,22 +100,27 @@ where
         Preconnection {
             local: self.local.clone(),
             remote: self.remote.clone(),
-            trans_props: self.trans_props.clone()
+            trans_props: self.trans_props.clone(),
+            _phantom: *self._phantom,
         }
     }
 }
 
-impl<L, R> PartialEq for Preconnection<L, R>
+/// Two [Preconnection](struct.Preconnection.html)s are equal if both their local and remote
+/// endpoints equal and have the same [TransportProperties](struct.TransportProperties.html).
+impl<T, L, R> PartialEq for Preconnection<T, L, R>
 where
     L: EndpointState + PartialEq,
     R: EndpointState + PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.local == other.local && self.remote == other.remote
+        self.local == other.local
+            && self.remote == other.remote
+            && self.trans_props == other.trans_props
     }
 }
 
-impl<L, R> Preconnection<L, R>
+impl<T, L, R> Preconnection<T, L, R>
 where
     L: EndpointState,
     R: EndpointState,
@@ -119,14 +136,15 @@ where
     /// let preconnection = Preconnection::new(TransportProperties::default())
     ///     .local_endpoint("127.0.0.1:80");
     /// ```
-    pub fn local_endpoint<'a, T>(self, local: T) -> Preconnection<T, R>
+    pub fn local_endpoint<'a, N>(self, local: N) -> Preconnection<T, N, R>
     where
         T: ToEndpoint<'a>,
     {
         Preconnection {
-            local: Box::new(local),
+            local,
             remote: self.remote,
-            trans_props: self.trans_props
+            trans_props: self.trans_props,
+            _phantom: *self._phantom,
         }
     }
 
@@ -144,14 +162,34 @@ where
     /// let preconnection = Preconnection::new(TransportProperties::default())
     ///     .remote_endpoint("example.com:80");
     /// ```
-    pub fn remote_endpoint<'a, T>(self, remote: T) -> Preconnection<L, T>
+    pub fn remote_endpoint<'a, N>(self, remote: N) -> Preconnection<T, L, N>
     where
         T: ToEndpoint<'a>,
     {
         Preconnection {
             local: self.local,
-            remote: Box::new(remote),
-            trans_props: self.trans_props
+            remote,
+            trans_props: self.trans_props,
+            _phantom: *self._phantom,
         }
     }
+
+    pub fn transport_properties(&self) -> &TransportProperties {
+        &self.trans_props
+    }
+
+    pub fn transport_properties_mut(&mut self) -> &mut TransportProperties {
+        &mut self.trans_props
+    }
+}
+
+impl<'a, T, L, R> Preconnection<T, L, R>
+where
+    L: ToEndpoint<'a>,
+    R: EndpointState,
+    T: Serialize + Deserialize,
+{
+    pub fn initiate(self) {}
+
+    pub fn initiate_with_timeout(self, timeout: Duration) {}
 }
