@@ -3,11 +3,11 @@ use lazy_static::lazy_static;
 
 use std::fmt;
 
-pub use selection::SelectionProperty;
 pub use security::SecurityParameters;
+pub use selection::SelectionProperty;
 
-mod selection;
 mod security;
+mod selection;
 
 lazy_static! {
     static ref DEFAULT: EnumMap<SelectionProperty, Preference> = enum_map! {

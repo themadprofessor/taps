@@ -101,13 +101,13 @@ where
             local: self.local.clone(),
             remote: self.remote.clone(),
             trans_props: self.trans_props.clone(),
-            _phantom: *self._phantom,
+            _phantom: self._phantom.clone(),
         }
     }
 }
 
 /// Two [Preconnection](struct.Preconnection.html)s are equal if both their local and remote
-/// endpoints equal and have the same [TransportProperties](struct.TransportProperties.html).
+/// endpoints equal and have the equivalent [TransportProperties](struct.TransportProperties.html).
 impl<T, L, R> PartialEq for Preconnection<T, L, R>
 where
     L: EndpointState + PartialEq,
@@ -138,13 +138,13 @@ where
     /// ```
     pub fn local_endpoint<'a, N>(self, local: N) -> Preconnection<T, N, R>
     where
-        T: ToEndpoint<'a>,
+        N: ToEndpoint<'a>,
     {
         Preconnection {
             local,
             remote: self.remote,
             trans_props: self.trans_props,
-            _phantom: *self._phantom,
+            _phantom: self._phantom,
         }
     }
 
@@ -164,13 +164,13 @@ where
     /// ```
     pub fn remote_endpoint<'a, N>(self, remote: N) -> Preconnection<T, L, N>
     where
-        T: ToEndpoint<'a>,
+        N: ToEndpoint<'a>,
     {
         Preconnection {
             local: self.local,
             remote,
             trans_props: self.trans_props,
-            _phantom: *self._phantom,
+            _phantom: self._phantom,
         }
     }
 
@@ -187,7 +187,6 @@ impl<'a, T, L, R> Preconnection<T, L, R>
 where
     L: ToEndpoint<'a>,
     R: EndpointState,
-    T: Serialize + Deserialize,
 {
     pub fn initiate(self) {}
 

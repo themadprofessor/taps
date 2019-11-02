@@ -1,3 +1,1 @@
-pub struct SecurityParameters {
-
-}
+pub struct SecurityParameters {}
