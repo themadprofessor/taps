@@ -21,11 +21,15 @@
 //! via the rendezvous method.
 
 use crate::properties::TransportProperties;
+use crate::race::race;
 use serde::export::PhantomData;
-use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::time::Duration;
 use tokio_dns::ToEndpoint;
+use crate::error::Error;
+use crate::connection::Connection;
+use tokio::codec::{BytesCodec, Framed};
+use tokio::net::TcpStream;
 
 /// A marker trait to specify types which represent the state of a
 /// [Preconnection's](struct.Preconnection.html) endpoints.
@@ -188,7 +192,10 @@ where
     L: ToEndpoint<'a>,
     R: EndpointState,
 {
-    pub fn initiate(self) {}
+    pub async fn initiate(self) -> Result<Connection<TcpStream, BytesCodec>, Error> {
+        let conn = race(self.local, &self.trans_props).await?;
+        Ok(Connection {conn: Framed::new(conn, BytesCodec::new())})
+    }
 
     pub fn initiate_with_timeout(self, timeout: Duration) {}
 }

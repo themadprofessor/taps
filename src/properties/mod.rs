@@ -146,8 +146,16 @@ impl TransportProperties {
     ///
     /// If `Sender` or `Receiver` is given, and the unidirectional connections are not supported by
     /// the transport system, `Bidirectional` will be used as a fallback.
-    pub fn direction(&mut self, dir: Direction) -> &mut Self {
+    pub fn set_direction(&mut self, dir: Direction) -> &mut Self {
         self.direction = dir;
         self
+    }
+
+    pub fn get(&self, prop: SelectionProperty) -> Preference {
+        self.select_props[prop]
+    }
+
+    pub fn direction(&self) -> Direction {
+        self.direction
     }
 }

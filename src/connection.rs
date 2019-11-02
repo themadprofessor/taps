@@ -1,15 +1,13 @@
 use futures::SinkExt;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::marker::PhantomData;
 use tokio::codec::{Decoder, Encoder, Framed};
 use tokio::prelude::*;
 
-pub struct Connection<T, C, F> {
-    _phantom: PhantomData<T>,
-    conn: Framed<C, F>,
+pub struct Connection<C, F> {
+    pub(crate) conn: Framed<C, F>,
 }
 
-impl<T, C, F> Connection<T, C, F>
+impl<C, F> Connection<C, F>
 where
     C: AsyncWrite + Unpin,
     F: Encoder + Unpin,
@@ -19,7 +17,7 @@ where
     }
 }
 
-impl<T, C, F> Connection<T, C, F>
+impl<C, F> Connection<C, F>
 where
     C: AsyncRead + Unpin,
     F: Decoder + Unpin,
