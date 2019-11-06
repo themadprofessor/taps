@@ -1,19 +1,20 @@
 use crate::connection::Connection;
 use crate::error::Connecting;
 use crate::error::Error;
+use crate::error::NoEndpoint;
 use crate::error::Resolution;
 use crate::properties::TransportProperties;
 use futures::compat::Future01CompatExt;
-use futures::future::Then;
 use futures::stream::FuturesUnordered;
-use futures::{future::select_all, FutureExt, StreamExt, TryFutureExt};
-use snafu::ResultExt;
+use futures::FutureExt;
+use futures::StreamExt;
+use snafu::{OptionExt, ResultExt};
 use std::cmp::Ordering;
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::future::Future;
 use tokio::net::TcpStream;
-use tokio::timer::{self, Delay};
+use tokio::timer::{self};
 use tokio_dns::ToEndpoint;
 
 fn order_addrs(l: &SocketAddr, r: &SocketAddr) -> Ordering {
@@ -43,7 +44,7 @@ where
     Ok(addrs)
 }
 
-fn add_delay(addr: SocketAddr) -> impl Future<Output=Result<TcpStream, ::std::io::Error>> {
+fn add_delay(addr: SocketAddr) -> impl Future<Output = Result<TcpStream, ::std::io::Error>> {
     timer::delay_for(Duration::from_micros(if let SocketAddr::V4(_) = addr {
         5
     } else {
@@ -66,6 +67,6 @@ where
         .collect::<FuturesUnordered<_>>()
         .next()
         .await
-        .unwrap()
+        .with_context(|| NoEndpoint)?
         .with_context(|| Connecting)
 }

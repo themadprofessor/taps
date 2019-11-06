@@ -1,7 +1,7 @@
 use futures::SinkExt;
 use std::marker::PhantomData;
-use tokio::codec::{Decoder, Encoder, Framed};
 use tokio::prelude::*;
+use tokio_util::codec::{Decoder, Encoder, Framed};
 
 pub struct Connection<C, F> {
     pub(crate) conn: Framed<C, F>,

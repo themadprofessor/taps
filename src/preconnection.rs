@@ -20,16 +20,17 @@
 //! parameters, the [Preconnection](struct.Preconnection.html) cannot be used to create a Connection
 //! via the rendezvous method.
 
+use crate::connection::Connection;
+use crate::error::Error;
+use crate::listener::Listener;
 use crate::properties::TransportProperties;
 use crate::race::race;
 use serde::export::PhantomData;
 use std::fmt;
 use std::time::Duration;
-use tokio_dns::ToEndpoint;
-use crate::error::Error;
-use crate::connection::Connection;
-use tokio::codec::{BytesCodec, Framed};
 use tokio::net::TcpStream;
+use tokio_dns::ToEndpoint;
+use tokio_util::codec::{BytesCodec, Framed};
 
 /// A marker trait to specify types which represent the state of a
 /// [Preconnection's](struct.Preconnection.html) endpoints.
@@ -189,13 +190,23 @@ where
 
 impl<'a, T, L, R> Preconnection<T, L, R>
 where
+    L: EndpointState,
+    R: ToEndpoint<'a>,
+{
+    pub async fn initiate(self) -> Result<Connection<TcpStream, BytesCodec>, Error> {
+        let conn = race(self.remote, &self.trans_props).await?;
+        Ok(Connection {
+            conn: Framed::new(conn, BytesCodec::new()),
+        })
+    }
+}
+
+impl<'a, T, L, R> Preconnection<T, L, R>
+where
     L: ToEndpoint<'a>,
     R: EndpointState,
 {
-    pub async fn initiate(self) -> Result<Connection<TcpStream, BytesCodec>, Error> {
-        let conn = race(self.local, &self.trans_props).await?;
-        Ok(Connection {conn: Framed::new(conn, BytesCodec::new())})
+    pub async fn listen(self) -> Result<Listener<::tokio::net::tcp::Incoming>, Error> {
+        Listener::<::tokio::net::tcp::Incoming>::create(self.local, &self.trans_props).await
     }
-
-    pub fn initiate_with_timeout(self, timeout: Duration) {}
 }
