@@ -1,9 +1,9 @@
-use crate::connection::Connection;
 use crate::error::Connecting;
 use crate::error::Error;
 use crate::error::NoEndpoint;
 use crate::error::Resolution;
 use crate::properties::TransportProperties;
+use crate::tokio::connection::Connection;
 use futures::compat::Future01CompatExt;
 use futures::stream::FuturesUnordered;
 use futures::FutureExt;

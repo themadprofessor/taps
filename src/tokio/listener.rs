@@ -1,14 +1,14 @@
 use crate::error::{Binding, Error, NoEndpoint, Resolution};
 use crate::properties::TransportProperties;
 use futures::compat::Future01CompatExt;
+use futures::task::Context;
 use futures::Poll;
 use snafu::{OptionExt, ResultExt};
 use std::pin::Pin;
 use tokio::net::TcpListener;
 use tokio::prelude::*;
-use tokio_dns::{resolve_sock_addr, ToEndpoint};
-use futures::task::Context;
 use tokio::stream::Stream;
+use tokio_dns::{resolve_sock_addr, ToEndpoint};
 
 pub struct Listener<I> {
     incoming: I,
@@ -43,6 +43,7 @@ where
     }
 }
 
+/*
 impl<C, I> Stream for Listener<I>
 where
     C: AsyncRead + AsyncWrite,
@@ -54,3 +55,4 @@ where
         self.incoming.poll_next(cx)
     }
 }
+*/
