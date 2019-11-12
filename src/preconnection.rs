@@ -1,7 +1,8 @@
+use crate::connection::Connection;
+use crate::error::Error;
+use crate::properties::TransportProperties;
 use async_trait::async_trait;
 use std::net::SocketAddr;
-use crate::error::Error;
-use crate::connection::Connection;
 
 #[async_trait]
 pub trait Endpoint {
@@ -9,8 +10,21 @@ pub trait Endpoint {
 }
 
 #[async_trait]
-pub trait Preconnection<T> {
-    fn local_endpoint<N>(&mut self, local: N) where N: Endpoint;
-    fn remote_endpoint<N>(&mut self, remote: N) where N: Endpoint;
-    async fn initiate<C>(self) -> Result<C, Error> where C: Connection<T>, T: Send + 'static;
+pub trait Preconnection<T, L, R> {
+    fn local_endpoint(&mut self, local: L)
+    where
+        L: Endpoint;
+
+    fn remote_endpoint(&mut self, remote: R)
+    where
+        R: Endpoint;
+
+    fn transport_properties(&self) -> &TransportProperties;
+
+    fn transport_properties_mut(&mut self) -> &mut TransportProperties;
+
+    async fn initiate<C>(self) -> Result<C, Error>
+    where
+        C: Connection<T>,
+        T: Send + 'static;
 }

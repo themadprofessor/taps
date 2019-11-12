@@ -20,28 +20,25 @@
 //! parameters, the [Preconnection](struct.Preconnection.html) cannot be used to create a Connection
 //! via the rendezvous method.
 
-use crate::error::Error;
+use std::fmt;
+
+use serde::export::PhantomData;
+use tokio_util::codec::{BytesCodec, Framed};
+
+use async_trait::async_trait;
+
 use crate::Endpoint;
+use crate::error::Error;
 use crate::properties::TransportProperties;
 use crate::tokio::connection::Connection;
-use crate::tokio::listener::Listener;
 use crate::tokio::race::race;
-use serde::export::PhantomData;
-use std::fmt;
-use std::time::Duration;
-use tokio::net::TcpStream;
-use tokio_dns::ToEndpoint;
-use tokio_util::codec::{BytesCodec, Framed};
-use async_trait::async_trait;
 
 /// A configuration type used to configure how to create a Connection.
 ///
 /// # Generic Types
-/// - T: The type which is going to be sent/received over the Connection
-/// - L: The type of the local endpoint. It is [NoEndpoint](struct.NoEndpoint.html) if no local
-/// endpoint is given
-/// - R: The type of the remote endpoint. It is [NoEndpoint](struct.NoEndpoint.html) if no remote
-/// endpoint is given
+/// - T: The type which is going to be sent/received over the Connection.
+/// - L: The type of the local endpoint.
+/// - R: The type of the remote endpoint.
 pub struct Preconnection<T, L, R> {
     local: Option<L>,
     remote: Option<R>,
@@ -50,7 +47,7 @@ pub struct Preconnection<T, L, R> {
 }
 
 impl<T, L, R> Preconnection<T, L, R> {
-    /// Create a new Preconnection which has no endpoints specified.
+    /// Create a new Preconnection.
     pub fn new(props: TransportProperties) -> Self {
         // Note: Box::new does not alloc when given 0-sized type.
         Preconnection {
@@ -85,7 +82,7 @@ where
             local: self.local.clone(),
             remote: self.remote.clone(),
             trans_props: self.trans_props.clone(),
-            _phantom: self._phantom.clone(),
+            _phantom: self._phantom,
         }
     }
 }
@@ -105,65 +102,37 @@ where
 }
 
 #[async_trait]
-impl <T, L, R> crate::Preconnection<T> for Preconnection<T, L, R> {
-    fn local_endpoint<N>(&mut self, local: N) where N: Endpoint {
+impl<T, L, R> crate::Preconnection<T, L, R> for Preconnection<T, L, R>
+where
+    L: Endpoint + Send,
+    R: Endpoint + Send,
+{
+    fn local_endpoint(&mut self, local: L) {
         self.local = Some(local);
     }
 
-    fn remote_endpoint<N>(&mut self, remote: N) where N: Endpoint {
+    fn remote_endpoint(&mut self, remote: R) {
         self.remote = Some(remote)
     }
 
-    async fn initiate<C>(self) -> C where C: crate::Connection<T>, T: Send + 'static {
-        unimplemented!()
+    fn transport_properties(&self) -> &TransportProperties {
+        &self.trans_props
+    }
+
+    fn transport_properties_mut(&mut self) -> &mut TransportProperties {
+        &mut self.trans_props
+    }
+
+    async fn initiate<C>(self) -> Result<C, Error>
+    where
+        C: crate::Connection<T>,
+        T: Send + 'static,
+    {
+        race(self.remote.expect("no remote endpoint given"), &self.trans_props).await
     }
 }
 
-/*impl<T, L, R> Preconnection<T, L, R>
-    where
-        L: EndpointState,
-        R: EndpointState,
-{
-    /// Specify the local endpoint which will be used when creating a Connection from this
-    /// [Preconnection](struct.Preconnection.html).
-    pub fn local_endpoint<'a, N>(self, local: N) -> Preconnection<T, N, R>
-        where
-            N: ToEndpoint<'a>,
-    {
-        Preconnection {
-            local,
-            remote: self.remote,
-            trans_props: self.trans_props,
-            _phantom: self._phantom,
-        }
-    }
-
-    /// Specify the remote endpoint which will be used when creating a Connection from this
-    /// [Preconnection](struct.Preconnection.html).
-    ///
-    /// No name resolution is done by this method. See resolve for eager resolution or initiate for
-    /// late resolution.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use taps::preconnection::*;
-    /// # use taps::properties::TransportProperties;
-    /// let preconnection = Preconnection::new(TransportProperties::default())
-    ///     .remote_endpoint("example.com:80");
-    /// ```
-    pub fn remote_endpoint<'a, N>(self, remote: N) -> Preconnection<T, L, N>
-        where
-            N: ToEndpoint<'a>,
-    {
-        Preconnection {
-            local: self.local,
-            remote,
-            trans_props: self.trans_props,
-            _phantom: self._phantom,
-        }
-    }
-
+/*
     pub fn transport_properties(&self) -> &TransportProperties {
         &self.trans_props
     }

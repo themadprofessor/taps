@@ -1,48 +1,19 @@
-use crate::error::Connecting;
-use crate::error::Error;
-use crate::error::NoEndpoint;
-use crate::error::Resolution;
-use crate::properties::TransportProperties;
-use crate::tokio::connection::Connection;
-use futures::compat::Future01CompatExt;
-use futures::stream::FuturesUnordered;
-use futures::FutureExt;
-use futures::StreamExt;
-use snafu::{OptionExt, ResultExt};
-use std::cmp::Ordering;
 use std::net::SocketAddr;
 use std::time::Duration;
+
+use futures::FutureExt;
+use futures::stream::FuturesUnordered;
+use futures::StreamExt;
+use snafu::{OptionExt, ResultExt};
 use tokio::future::Future;
 use tokio::net::TcpStream;
 use tokio::timer::{self};
-use tokio_dns::ToEndpoint;
 
-fn order_addrs(l: &SocketAddr, r: &SocketAddr) -> Ordering {
-    match l {
-        SocketAddr::V6(_) => match r {
-            SocketAddr::V4(_) => Ordering::Greater,
-            SocketAddr::V6(_) => Ordering::Equal,
-        },
-        SocketAddr::V4(_) => match r {
-            SocketAddr::V4(_) => Ordering::Equal,
-            SocketAddr::V6(_) => Ordering::Less,
-        },
-    }
-}
-
-async fn resolve<'a, T>(endpoint: T) -> Result<Vec<SocketAddr>, Error>
-where
-    T: ToEndpoint<'a>,
-{
-    let mut addrs = tokio_dns::resolve_sock_addr(endpoint)
-        .compat()
-        .await
-        .with_context(|| Resolution)?;
-    // Prioritise V6
-    addrs.sort_unstable_by(order_addrs);
-
-    Ok(addrs)
-}
+use crate::Endpoint;
+use crate::error::Connecting;
+use crate::error::Error;
+use crate::error::NoEndpoint;
+use crate::properties::TransportProperties;
 
 fn add_delay(addr: SocketAddr) -> impl Future<Output = Result<TcpStream, ::std::io::Error>> {
     timer::delay_for(Duration::from_micros(if let SocketAddr::V4(_) = addr {
@@ -53,14 +24,14 @@ fn add_delay(addr: SocketAddr) -> impl Future<Output = Result<TcpStream, ::std::
     .then(move |_| TcpStream::connect(addr))
 }
 
-pub(crate) async fn race<'a, T>(
+pub(crate) async fn race<T>(
     endpoint: T,
     props: &TransportProperties,
 ) -> Result<TcpStream, Error>
 where
-    T: ToEndpoint<'a>,
+    T: Endpoint,
 {
-    resolve(endpoint)
+    endpoint.resolve()
         .await?
         .into_iter()
         .map(add_delay)
