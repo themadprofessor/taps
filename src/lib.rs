@@ -4,10 +4,10 @@ use bytes::{Bytes, BytesMut};
 
 mod connection;
 pub mod error;
+mod frame;
 mod preconnection;
 pub mod properties;
 mod tokio;
-mod frame;
 
 use crate::error::Error;
 use crate::properties::TransportProperties;

@@ -1,14 +1,24 @@
 use snafu::Snafu;
+use std::error::Error as StdError;
 
 #[derive(Debug, Snafu)]
-#[snafu(visibility = "pub(crate)")]
+#[snafu(visibility(pub))]
 pub enum Error {
-    #[snafu(display("failed to resolve endpoint: {}", source))]
-    Resolution { source: ::std::io::Error },
-    #[snafu(display("no endpoints resolved"))]
-    NoEndpoint,
-    #[snafu(display("failed to connect to endpoint: {}", source))]
-    Connecting { source: ::std::io::Error },
-    #[snafu(display("failed to bind to endpoint: {}", source))]
-    Binding { source: ::tokio::io::Error },
+    #[snafu(display("failed to initiate connection: {}", source))]
+    Initiate { source: Box<dyn StdError> },
+
+    #[snafu(display("failed to begin listening for connections: {}", source))]
+    Listen { source: Box<dyn StdError> },
+
+    #[snafu(display("failed to rendezvous: {}", source))]
+    Rendezvous { source: Box<dyn StdError> },
+
+    #[snafu(display("failed to send data: {}", source))]
+    Send { source: Box<dyn StdError> },
+
+    #[snafu(display("failed to receive data: {}", source))]
+    Receive { source: Box<dyn StdError> },
+
+    #[snafu(display("failed to encode data: {}", source))]
+    Encode { source: Box<dyn StdError> },
 }

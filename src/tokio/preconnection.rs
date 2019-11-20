@@ -22,16 +22,16 @@
 
 use std::fmt;
 
-use serde::export::PhantomData;
+use snafu::ResultExt;
+use std::marker::PhantomData;
 use tokio_util::codec::{BytesCodec, Framed};
 
 use async_trait::async_trait;
 
-use crate::Endpoint;
-use crate::error::Error;
+use crate::error::{Error, Initiate};
 use crate::properties::TransportProperties;
-use crate::tokio::connection::Connection;
 use crate::tokio::race::race;
+use crate::{Connection, Endpoint};
 
 /// A configuration type used to configure how to create a Connection.
 ///
@@ -123,12 +123,18 @@ where
         &mut self.trans_props
     }
 
-    async fn initiate<C>(self) -> Result<C, Error>
+    async fn initiate(self) -> Result<Box<dyn Connection<T>>, Error>
     where
-        C: crate::Connection<T>,
         T: Send + 'static,
     {
-        race(self.remote.expect("no remote endpoint given"), &self.trans_props).await
+        race(
+            self.remote.expect("no remote endpoint given"),
+            &self.trans_props,
+        )
+        .await
+        .map_err(Into::into)
+        .map(Into::into)
+        .with_context(|| Initiate)
     }
 }
 

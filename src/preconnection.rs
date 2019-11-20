@@ -23,8 +23,7 @@ pub trait Preconnection<T, L, R> {
 
     fn transport_properties_mut(&mut self) -> &mut TransportProperties;
 
-    async fn initiate<C>(self) -> Result<C, Error>
+    async fn initiate(self) -> Result<Box<dyn Connection<T>>, Error>
     where
-        C: Connection<T>,
         T: Send + 'static;
 }

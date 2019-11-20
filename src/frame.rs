@@ -1,5 +1,5 @@
-use bytes::BytesMut;
 use crate::error::Error;
+use bytes::BytesMut;
 
 pub trait Framer {
     type Item;

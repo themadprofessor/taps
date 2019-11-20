@@ -1,10 +1,7 @@
-use crate::error::{Binding, Error, NoEndpoint, Resolution};
 use crate::properties::TransportProperties;
-use futures::compat::Future01CompatExt;
-use futures::task::Context;
-use futures::Poll;
+use crate::tokio::error::{Binding, Error, NoEndpoint, Resolution};
+use crate::Endpoint;
 use snafu::{OptionExt, ResultExt};
-use std::pin::Pin;
 use tokio::net::TcpListener;
 use tokio::prelude::*;
 use tokio::stream::Stream;
@@ -24,10 +21,10 @@ where
         props: &TransportProperties,
     ) -> Result<Listener<::tokio::net::tcp::Incoming>, Error>
     where
-        L: ToEndpoint<'a>,
+        L: Endpoint,
     {
-        let addr = resolve_sock_addr(endpoint)
-            .compat()
+        let addr = endpoint
+            .resolve()
             .await
             .with_context(|| Resolution)?
             .into_iter()
