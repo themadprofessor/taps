@@ -55,7 +55,7 @@ where
     L: Endpoint + Send,
     R: Endpoint + Send,
 {
-    tokio::Preconnection::new(props)
+    crate::tokio::preconnection::Preconnection::new(props)
 }
 
 #[cfg(test)]

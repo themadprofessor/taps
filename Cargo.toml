@@ -12,10 +12,10 @@ edition = "2018"
 tokio = { git = "https://github.com/tokio-rs/tokio", commit = "a6253ed05a1e0d14bc64915f5937c29092df9497" }
 tokio-util = { git = "https://github.com/tokio-rs/tokio", commit = "a6253ed05a1e0d14bc64915f5937c29092df9497" }
 snafu = { version = "0.6", features = ["futures"]}
-tokio-dns-unofficial = "0.4"
 lazy_static = "1.4"
 enum-map = "0.6"
 serde = "1.0"
 futures-preview = { version = "0.3.0-alpha.19", features = ["compat"] }
 async-trait = "0.1.17"
 bytes = "0.4.12"
+domain = "0.4.0"
