@@ -10,6 +10,16 @@ pub trait Endpoint {
 }
 
 #[async_trait]
+impl<T> Endpoint for T
+where
+    T: Into<SocketAddr> + Send,
+{
+    async fn resolve(self) -> Result<Vec<SocketAddr>, crate::Error> {
+        Ok(vec![self.into()])
+    }
+}
+
+#[async_trait]
 pub trait Preconnection<T, L, R> {
     fn local_endpoint(&mut self, local: L)
     where
@@ -25,5 +35,6 @@ pub trait Preconnection<T, L, R> {
 
     async fn initiate(self) -> Result<Box<dyn Connection<T>>, Error>
     where
-        T: Send + 'static;
+        T: Send + 'static,
+        R: Endpoint + Send;
 }

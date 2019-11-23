@@ -1,13 +1,15 @@
 use crate::properties::TransportProperties;
+use crate::tokio::race;
 use crate::{Connection, Endpoint, Error};
 use async_trait::async_trait;
 use std::marker::PhantomData;
 
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Preconnection<T, L, R> {
     props: TransportProperties,
     local: Option<L>,
     remote: Option<R>,
-    _phantom: PhantomData<T>,
+    _data: PhantomData<T>,
 }
 
 impl<T, L, R> Preconnection<T, L, R> {
@@ -16,7 +18,7 @@ impl<T, L, R> Preconnection<T, L, R> {
             props,
             local: None,
             remote: None,
-            _phantom: PhantomData,
+            _data: PhantomData,
         }
     }
 }
@@ -52,7 +54,11 @@ where
     async fn initiate(self) -> Result<Box<dyn Connection<T>>, Error>
     where
         T: Send + 'static,
+        R: Endpoint + Send,
     {
-        unimplemented!()
+        let remote = self
+            .remote
+            .expect("cannot initiate a connection without a remote endpoint");
+        race::race(remote, self.props).await
     }
 }
