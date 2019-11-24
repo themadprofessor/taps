@@ -20,7 +20,7 @@ where
 }
 
 #[async_trait]
-pub trait Preconnection<T, L, R> {
+pub trait Preconnection<T, L, R, F> {
     fn local_endpoint(&mut self, local: L)
     where
         L: Endpoint;
@@ -33,7 +33,9 @@ pub trait Preconnection<T, L, R> {
 
     fn transport_properties_mut(&mut self) -> &mut TransportProperties;
 
-    async fn initiate(self) -> Result<Box<dyn Connection<T>>, Error>
+    fn add_framer(&mut self, framer: F);
+
+    async fn initiate(self) -> Result<Box<dyn Connection<T, F>>, Error>
     where
         T: Send + 'static,
         R: Endpoint + Send;

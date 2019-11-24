@@ -1,9 +1,10 @@
 use crate::error::Error;
 use crate::{Decode, Encode};
 use async_trait::async_trait;
+use crate::frame::Framer;
 
 #[async_trait]
-pub trait Connection<T: Send + 'static> {
+pub trait Connection<T: Send + 'static, F: Framer + Send + 'static> {
     async fn send(&mut self, data: T) -> Result<(), Error>
     where
         T: Encode;

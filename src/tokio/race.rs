@@ -12,34 +12,39 @@ use std::time::Duration;
 use tokio::prelude::Future;
 use tokio::timer;
 use tokio::timer::Delay;
+use crate::frame::Framer;
 
-fn add_delay<T>(
+fn add_delay<T, F>(
     addr: SocketAddr,
     props: &TransportProperties,
-) -> impl Future<Output = Result<Box<dyn crate::Connection<T>>, Error>> + '_
+    framer: Option<F>
+) -> impl Future<Output = Result<Box<dyn crate::Connection<T, F>>, Error>> + '_
 where
     T: Send + 'static,
+    F: Send + 'static + Framer
 {
     match addr {
         SocketAddr::V4(_) => timer::delay_for(Duration::from_millis(5)),
         SocketAddr::V6(_) => timer::delay_for(Duration::from_nanos(0)),
     }
-    .then(move |_| Connection::create(addr, props))
+    .then(move |_| Connection::create(addr, props, framer))
 }
 
-pub async fn race<E, T>(
+pub async fn race<E, T, F>(
     endpoint: E,
     props: TransportProperties,
-) -> Result<Box<dyn crate::Connection<T>>, Error>
+    framer: Option<F>
+) -> Result<Box<dyn crate::Connection<T, F>>, Error>
 where
     E: Endpoint + Send,
     T: Send + 'static,
+    F: Send + 'static + Framer
 {
     endpoint
         .resolve()
         .await?
         .into_iter()
-        .map(|addr| add_delay(addr, &props))
+        .map(|addr| add_delay(addr, &props, framer))
         .collect::<FuturesUnordered<_>>()
         .next()
         .await
