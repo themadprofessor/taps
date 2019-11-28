@@ -8,14 +8,12 @@ edition = "2018"
 
 [dependencies]
 # Async/await compatable tokio is not on crates.io
-#tokio = { git = "https://github.com/tokio-rs/tokio", tag = "tokio-0.2.0-alpha.6" }
-tokio = { git = "https://github.com/tokio-rs/tokio", commit = "a6253ed05a1e0d14bc64915f5937c29092df9497" }
-tokio-util = { git = "https://github.com/tokio-rs/tokio", commit = "a6253ed05a1e0d14bc64915f5937c29092df9497" }
+tokio = { version = "0.2", features = ["full"] }
+tokio-util = { version = "0.2" }
 snafu = { version = "0.6", features = ["futures"]}
 lazy_static = "1.4"
 enum-map = "0.6"
 serde = "1.0"
 futures-preview = { version = "0.3.0-alpha.19", features = ["compat"] }
-async-trait = "0.1.17"
-bytes = "0.4.12"
-domain = "0.4.0"
+async-trait = "0.1"
+bytes = "0.5"

@@ -8,5 +8,4 @@ fn simple() {
         TransportProperties::default(),
     );
 
-    preconnection.remote_endpoint(SocketAddr::)
 }
