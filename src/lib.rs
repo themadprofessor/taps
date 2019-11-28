@@ -8,11 +8,13 @@ mod frame;
 mod preconnection;
 pub mod properties;
 mod tokio;
+pub mod http;
 
 use crate::error::Error;
 use crate::properties::TransportProperties;
 pub use connection::Connection;
 pub use preconnection::*;
+use crate::frame::Framer;
 
 pub trait Encode {
     fn encode(&self, data: &mut BytesMut) -> Result<(), error::Error>;
@@ -41,6 +43,13 @@ where
     }
 }
 
+impl Decode for () {
+    fn decode(data: &Bytes) -> Result<Self, Error> where
+        Self: Sized {
+        Ok(())
+    }
+}
+
 impl Decode for Vec<u8> {
     fn decode(data: &Bytes) -> Result<Self, Error>
     where
@@ -50,10 +59,11 @@ impl Decode for Vec<u8> {
     }
 }
 
-pub fn new_preconnection<T, L, R>(props: TransportProperties) -> impl Preconnection<T, L, R>
+pub fn new_preconnection<T, L, R, F>(props: TransportProperties) -> impl Preconnection<T, L, R, F>
 where
     L: Endpoint + Send,
     R: Endpoint + Send,
+    F: Framer + Send + 'static,
 {
     crate::tokio::preconnection::Preconnection::new(props)
 }

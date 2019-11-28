@@ -1,31 +1,37 @@
 use crate::properties::TransportProperties;
+use crate::tokio::race;
 use crate::{Connection, Endpoint, Error};
 use async_trait::async_trait;
 use std::marker::PhantomData;
+use crate::frame::Framer;
 
-pub struct Preconnection<T, L, R> {
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Preconnection<T, L, R, F> {
     props: TransportProperties,
     local: Option<L>,
     remote: Option<R>,
-    _phantom: PhantomData<T>,
+    framer: Option<F>,
+    _data: PhantomData<T>,
 }
 
-impl<T, L, R> Preconnection<T, L, R> {
+impl<T, L, R, F> Preconnection<T, L, R, F> {
     pub fn new(props: TransportProperties) -> Self {
         Preconnection {
             props,
             local: None,
             remote: None,
-            _phantom: PhantomData,
+            framer: None,
+            _data: PhantomData,
         }
     }
 }
 
 #[async_trait]
-impl<T, L, R> crate::Preconnection<T, L, R> for Preconnection<T, L, R>
+impl<T, L, R, F> crate::Preconnection<T, L, R, F> for Preconnection<T, L, R, F>
 where
     L: Send,
     R: Send,
+    F: Send + 'static + Framer
 {
     fn local_endpoint(&mut self, local: L)
     where
@@ -49,10 +55,18 @@ where
         &mut self.props
     }
 
-    async fn initiate(self) -> Result<Box<dyn Connection<T>>, Error>
+    fn add_framer(&mut self, framer: F) {
+        self.framer = Some(framer)
+    }
+
+    async fn initiate(self) -> Result<Box<dyn Connection<T, F>>, Error>
     where
         T: Send + 'static,
+        R: Endpoint + Send,
     {
-        unimplemented!()
+        let remote = self
+            .remote
+            .expect("cannot initiate a connection without a remote endpoint");
+        race::race(remote, self.props, self.framer).await
     }
 }
