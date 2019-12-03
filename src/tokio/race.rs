@@ -12,37 +12,37 @@ use std::time::Duration;
 use tokio::time;
 use crate::frame::Framer;
 
-fn add_delay<T, F>(
+fn add_delay<F>(
     addr: SocketAddr,
     props: &TransportProperties,
     framer: Option<F>
-) -> impl Future<Output = Result<Box<dyn crate::Connection<T, F>>, Error>> + '_
+) -> impl Future<Output = Result<Box<dyn crate::Connection<F>>, Error>> + '_
 where
-    T: Send + 'static,
-    F: Send + 'static + Framer
+    F: Send + 'static + Framer,
+    F::Input: ::std::marker::Send
 {
-    match addr {
+match addr {
         SocketAddr::V4(_) => time::delay_for(Duration::from_millis(5)),
         SocketAddr::V6(_) => time::delay_for(Duration::from_nanos(0)),
     }
     .then(move |_| Connection::create(addr, props, framer))
 }
 
-pub async fn race<E, T, F>(
+pub async fn race<E, F>(
     endpoint: E,
     props: TransportProperties,
     framer: Option<F>
-) -> Result<Box<dyn crate::Connection<T, F>>, Error>
+) -> Result<Box<dyn crate::Connection<F>>, Error>
 where
     E: Endpoint + Send,
-    T: Send + 'static,
-    F: Send + 'static + Framer
+    F: Send + 'static + Framer + Clone,
+    F::Input: ::std::marker::Send
 {
-    endpoint
+endpoint
         .resolve()
         .await?
         .into_iter()
-        .map(|addr| add_delay(addr, &props, framer))
+        .map(|addr| add_delay(addr, &props, framer.clone()))
         .collect::<FuturesUnordered<_>>()
         .next()
         .await

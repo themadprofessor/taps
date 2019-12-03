@@ -3,6 +3,7 @@ use crate::error::Error;
 use crate::properties::TransportProperties;
 use async_trait::async_trait;
 use std::net::SocketAddr;
+use crate::frame::Framer;
 
 #[async_trait]
 pub trait Endpoint {
@@ -20,7 +21,7 @@ where
 }
 
 #[async_trait]
-pub trait Preconnection<T, L, R, F> {
+pub trait Preconnection<L, R, F> {
     fn local_endpoint(&mut self, local: L)
     where
         L: Endpoint;
@@ -35,8 +36,9 @@ pub trait Preconnection<T, L, R, F> {
 
     fn add_framer(&mut self, framer: F);
 
-    async fn initiate(self) -> Result<Box<dyn Connection<T, F>>, Error>
+    async fn initiate(self) -> Result<Box<dyn Connection<F>>, Error>
     where
-        T: Send + 'static,
-        R: Endpoint + Send;
+        R: Endpoint + Send,
+        F: Framer + Send,
+        F::Input: ::std::marker::Send;
 }

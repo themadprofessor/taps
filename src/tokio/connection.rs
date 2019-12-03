@@ -17,11 +17,10 @@ use std::process::Output;
 
 const BUFFER_SIZE: usize = 1024;
 
-pub struct Connection<T, F> {
+pub struct Connection<F> {
     inner: TokioConnection,
     buffer: BytesMut,
     framer: Option<F>,
-    _data: PhantomData<T>
 }
 
 enum TokioConnection {
@@ -75,16 +74,16 @@ impl TokioConnection {
     }
 }
 
-impl<T, F> Connection<T, F>
+impl<F> Connection<F>
 where
-    T: ::std::marker::Send + 'static,
-    F: Framer<Input=T, Output=T> + 'static + ::std::marker::Send
+    F: Framer + 'static + ::std::marker::Send,
+    F::Input: ::std::marker::Send
 {
-    pub async fn create(
+pub async fn create(
         addr: SocketAddr,
         props: &TransportProperties,
         framer: Option<F>
-    ) -> Result<Box<dyn crate::Connection<T, F>>, Error> {
+    ) -> Result<Box<dyn crate::Connection<F>>, Error> {
         let rely: Preference = props.get(SelectionProperty::Reliability);
         let conn = match rely {
             Preference::Require => create_tcp(addr).await?,
@@ -99,19 +98,19 @@ where
             Preference::Prohibit => create_udp(addr).await?,
         };
 
-        Ok(Box::new(Connection::<T, F> { inner: conn, buffer: BytesMut::new(), framer, _data: PhantomData }))
+        Ok(Box::new(Connection::<F> { inner: conn, buffer: BytesMut::new(), framer }))
     }
 }
 
 #[async_trait]
-impl<T, F> crate::Connection<T, F> for Connection<T, F>
+impl<F> crate::Connection<F> for Connection<F>
 where
-    T: ::std::marker::Send + 'static,
-    F: Framer + ::std::marker::Send + 'static
+    F: Framer + ::std::marker::Send + 'static,
+    F::Input: ::std::marker::Send
 {
-    async fn send(&mut self, data: T) -> Result<(), Error>
+    async fn send(&mut self, data: F::Input) -> Result<(), Error>
     where
-        T: Encode,
+        F::Input: Encode,
     {
         let length = data.size_hint();
         let mut bytes = BytesMut::with_capacity(length.1.unwrap_or_else(|| length.0));
@@ -122,9 +121,8 @@ where
         self.inner.send(&mut bytes).await
     }
 
-    async fn receive(&mut self) -> Result<T, Error>
+    async fn receive(&mut self) -> Result<F::Output, Error>
     where
-        T: Decode,
     {
         self.buffer.reserve(BUFFER_SIZE);
         let read = self.inner.recv(&mut self.buffer).await?;

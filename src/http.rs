@@ -6,10 +6,31 @@ use std::marker::PhantomData;
 use crate::{Encode, Decode};
 use http::header::HeaderName;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Http<T> {
     headers: HeaderMap,
     _data: PhantomData<T>
+}
+
+impl <T> Encode for Request<T> where T: Encode {
+    fn encode(&self, data: &mut BytesMut) -> Result<(), Error> {
+        let req = self;
+        data.extend_from_slice(req.method().as_str().as_bytes());
+        data.extend_from_slice(&[b' ']);
+        data.extend_from_slice(req.uri().path_and_query().map(|p| p.as_str()).unwrap_or_else(|| "/").as_bytes());
+        data.extend_from_slice(b" HTTP/1.0\r\n");
+
+        for (header, value) in req.headers().iter() {
+            if !req.headers().contains_key(header) {
+                data.extend_from_slice(header.as_ref());
+                data.extend_from_slice(&[b':']);
+                data.extend_from_slice(value.as_bytes());
+                data.extend_from_slice(b"\r\n");
+            }
+        }
+
+        req.body().encode(data)
+    }
 }
 
 impl <T> Framer for Http<T> where T: Encode + Decode {
@@ -19,29 +40,7 @@ impl <T> Framer for Http<T> where T: Encode + Decode {
     type MetaValue = HeaderValue;
 
     fn frame(&mut self, item: Self::Input, dst: &mut BytesMut) -> Result<(), Error> {
-        dst.extend_from_slice(item.method().as_str().as_bytes());
-        dst.extend_from_slice(&[b' ']);
-        dst.extend_from_slice(item.uri().path_and_query().map(|p| p.as_str()).unwrap_or_else(|| "/").as_bytes());
-        dst.extend_from_slice(b" HTTP/1.0\r\n");
-
-        for (header, value) in self.headers.iter() {
-            if !item.headers().contains_key(header) {
-                dst.extend_from_slice(header.as_ref());
-                dst.extend_from_slice(&[b':']);
-                dst.extend_from_slice(value.as_bytes());
-                dst.extend_from_slice(b"\r\n");
-            }
-        }
-
-        for (header, value) in item.headers().iter() {
-            dst.extend_from_slice(header.as_ref());
-            dst.extend_from_slice(&[b':']);
-            dst.extend_from_slice(value.as_bytes());
-            dst.extend_from_slice(b"\r\n");
-        }
-        dst.extend_from_slice(b"\r\n");
-
-        item.body().encode(dst)
+        item.encode(dst)
     }
 
     fn deframe(&mut self, src: &mut BytesMut) -> Result<Option<Self::Output>, Error> {

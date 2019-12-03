@@ -6,32 +6,30 @@ use std::marker::PhantomData;
 use crate::frame::Framer;
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct Preconnection<T, L, R, F> {
+pub struct Preconnection<L, R, F> {
     props: TransportProperties,
     local: Option<L>,
     remote: Option<R>,
     framer: Option<F>,
-    _data: PhantomData<T>,
 }
 
-impl<T, L, R, F> Preconnection<T, L, R, F> {
+impl<L, R, F> Preconnection<L, R, F> {
     pub fn new(props: TransportProperties) -> Self {
         Preconnection {
             props,
             local: None,
             remote: None,
             framer: None,
-            _data: PhantomData,
         }
     }
 }
 
 #[async_trait]
-impl<T, L, R, F> crate::Preconnection<T, L, R, F> for Preconnection<T, L, R, F>
+impl<L, R, F> crate::Preconnection<L, R, F> for Preconnection<L, R, F>
 where
     L: Send,
     R: Send,
-    F: Send + 'static + Framer
+    F: Send + Sync + 'static + Framer + Clone
 {
     fn local_endpoint(&mut self, local: L)
     where
@@ -59,10 +57,10 @@ where
         self.framer = Some(framer)
     }
 
-    async fn initiate(self) -> Result<Box<dyn Connection<T, F>>, Error>
+    async fn initiate(self) -> Result<Box<dyn Connection<F>>, Error>
     where
-        T: Send + 'static,
         R: Endpoint + Send,
+        F::Input: ::std::marker::Send
     {
         let remote = self
             .remote

@@ -30,17 +30,36 @@ pub trait Decode {
         Self: Sized;
 }
 
-impl<T> Encode for T
-where
-    T: AsRef<[u8]>,
-{
+impl Encode for &[u8] {
+    fn encode(&self, data: &mut BytesMut) -> Result<(), Error> {
+        data.extend_from_slice(self);
+        Ok(())
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.len(), Some(self.len()))
+    }
+}
+
+impl Encode for &str {
+    fn encode(&self, data: &mut BytesMut) -> Result<(), Error> {
+        data.extend_from_slice(self.as_bytes());
+        Ok(())
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.len(), Some(self.len()))
+    }
+}
+
+impl Encode for String {
     fn encode(&self, data: &mut BytesMut) -> Result<(), Error> {
         data.extend_from_slice(self.as_ref());
         Ok(())
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.as_ref().len(), Some(self.as_ref().len()))
+        (self.len(), Some(self.len()))
     }
 }
 
@@ -60,11 +79,18 @@ impl Decode for Vec<u8> {
     }
 }
 
-pub fn new_preconnection<T, L, R, F>(props: TransportProperties) -> impl Preconnection<T, L, R, F>
+impl Decode for String {
+    fn decode(data: &Bytes) -> Result<Self, Error> where
+        Self: Sized {
+        Ok(String::from_utf8_lossy(data).to_string())
+    }
+}
+
+pub fn new_preconnection<T, L, R, F>(props: TransportProperties) -> impl Preconnection<L, R, F>
 where
     L: Endpoint + Send,
     R: Endpoint + Send,
-    F: Framer + Send + 'static,
+    F: Framer + Send + Sync + Clone + 'static,
 {
     crate::tokio::preconnection::Preconnection::new(props)
 }

@@ -4,13 +4,13 @@ use async_trait::async_trait;
 use crate::frame::Framer;
 
 #[async_trait]
-pub trait Connection<T: Send + 'static, F: Framer + Send + 'static> {
-    async fn send(&mut self, data: T) -> Result<(), Error>
+pub trait Connection<F: Framer + Send + 'static> {
+    async fn send(&mut self, data: F::Input) -> Result<(), Error>
     where
-        T: Encode;
-    async fn receive(&mut self) -> Result<T, Error>
+        F::Input: Encode;
+    async fn receive(&mut self) -> Result<F::Output, Error>
     where
-        T: Decode;
+        F::Output: Decode;
     async fn close(self: Box<Self>) -> Result<(), Error>;
 
     fn abort(self: Box<Self>);
