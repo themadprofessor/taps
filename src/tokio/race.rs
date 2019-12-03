@@ -5,13 +5,11 @@ use crate::tokio::connection::Connection;
 use crate::tokio::error::NoEndpoint;
 use crate::Endpoint;
 use futures::stream::FuturesUnordered;
-use futures::{FutureExt, StreamExt};
+use futures::{FutureExt, StreamExt, Future};
 use snafu::{OptionExt, ResultExt};
 use std::net::SocketAddr;
 use std::time::Duration;
-use tokio::prelude::Future;
-use tokio::timer;
-use tokio::timer::Delay;
+use tokio::time;
 use crate::frame::Framer;
 
 fn add_delay<T, F>(
@@ -24,8 +22,8 @@ where
     F: Send + 'static + Framer
 {
     match addr {
-        SocketAddr::V4(_) => timer::delay_for(Duration::from_millis(5)),
-        SocketAddr::V6(_) => timer::delay_for(Duration::from_nanos(0)),
+        SocketAddr::V4(_) => time::delay_for(Duration::from_millis(5)),
+        SocketAddr::V6(_) => time::delay_for(Duration::from_nanos(0)),
     }
     .then(move |_| Connection::create(addr, props, framer))
 }

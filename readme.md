@@ -1,41 +1,71 @@
-# Readme
+# TAPS
 
-Put a brief description of your code here. This should at least describe the file structure.
+[![license](https://img.shields.io/github/license/themadprofessor/taps?style=flat-square)](LICENSE)
+[![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
+[![activity](https://img.shields.io/github/commit-activity/m/themadprofessor/taps?style=flat-square)](Activity)
+[![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg?style=flat-square)](https://github.com/rust-secure-code/safety-dance/)
 
-## Build instructions
+From the IETF TAPS Architecture draft:
+> The goal of the Transport Services architecture is to provide a
+> common, flexible, and reusable interface for transport protocols.  As
+> applications adopt this interface, they will benefit from a wide set
+> of transport features that can evolve over time, and ensure that the
+> system providing the interface can optimize its behavior based on the
+> application requirements and network conditions, without requiring
+> changes to the applications.  This flexibility enables faster
+> deployment of new features and protocols.  It can also support
+> applications by offering racing and fallback mechanisms, which
+> otherwise need to be implemented in each application separately.
 
-**You must** include the instructions necessary to build and deploy this project successfully. If appropriate, also include 
-instructions to run automated tests. 
+## Table of Contents
 
-### Requirements
+- [Security](#security)
+- [Background](#background)
+- [Install](#install)
+- [Usage](#usage)
+- [API](#api)
+- [Contributing](#contributing)
+- [License](#license)
 
-List the all of the pre-requisites software required to set up your project (e.g. compilers, packages, libraries, OS, hardware)
+## Security
 
-For example:
+This library is in the very early stages of development, as such has not be independently audited.
+Attempts are made to ensure minimal security vulnerabilities through the use of [cargo-audit](https://github.com/RustSec/cargo-audit)
+when pushes are made to the library.
 
-* Python 3.7
-* Packages: listed in `requirements.txt` 
-* Tested on Windows 10
+**NOT FOR PRODUCTION**
 
-or another example:
+## Background
 
-* Requires Raspberry Pi 3 
-* a Linux host machine with the `arm-none-eabi` toolchain (at least version `x.xx`) installed
-* a working LuaJIT installation > 2.1.0
+This crate is a Rust implementation of the IETF's [TAPS](https://datatracker.ietf.org/wg/taps/documents/) API.
+Key aims of the TAPS API include:
+- Defining a high-level, asynchronous networking API
+- Decoupling applications from transport layer implementations
+- Providing a unified interface for portable network programming
 
-### Build steps
+## Install
 
-List the steps required to build software. 
+Add the following to your Cargo.toml
+```toml
+[dependencies]
+taps = { git = "https://github.com/themadprofessor/taps.git" }
+```
 
-Hopefully something simple like `pip install -e .` or `make` or `cd build; cmake ..`. In
-some cases you may have much more involved setup required.
+## API
 
-### Test steps
+The API relies heavily on [trait objects](https://doc.rust-lang.org/nightly/reference/types/trait-object.html?highlight=dyn#trait-objects) 
+This is to allow the underlying implementation of the TAPS API to change without applications having to rewrite any code.
+Only a recompilation would be required.
 
-List steps needed to show your software works. This might be running a test suite, or just starting the program; but something that could be used to verify your code is working correctly.
 
-Examples:
+## Contributing
 
-* Run automated tests by running `pytest`
-* Start the software by running `bin/editor.exe` and opening the file `examples/example_01.bin`
+See [the contributing file](CONTRIBUTING.md)!
 
+PRs accepted.
+
+Small note: If editing the Readme, please conform to the [standard-readme](https://github.com/RichardLitt/standard-readme) specification.
+
+## License
+
+[MIT © Stuart Reilly.](LICENSE)
