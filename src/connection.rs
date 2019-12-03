@@ -1,7 +1,7 @@
 use crate::error::Error;
+use crate::frame::Framer;
 use crate::{Decode, Encode};
 use async_trait::async_trait;
-use crate::frame::Framer;
 
 #[async_trait]
 pub trait Connection<F: Framer + Send + 'static> {

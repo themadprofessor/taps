@@ -6,16 +6,16 @@ use bytes::{Bytes, BytesMut};
 mod connection;
 pub mod error;
 mod frame;
+pub mod http;
 mod preconnection;
 pub mod properties;
 mod tokio;
-pub mod http;
 
 use crate::error::Error;
+use crate::frame::Framer;
 use crate::properties::TransportProperties;
 pub use connection::Connection;
 pub use preconnection::*;
-use crate::frame::Framer;
 
 pub trait Encode {
     fn encode(&self, data: &mut BytesMut) -> Result<(), error::Error>;
@@ -64,8 +64,10 @@ impl Encode for String {
 }
 
 impl Decode for () {
-    fn decode(data: &Bytes) -> Result<Self, Error> where
-        Self: Sized {
+    fn decode(_data: &Bytes) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
         Ok(())
     }
 }
@@ -80,8 +82,10 @@ impl Decode for Vec<u8> {
 }
 
 impl Decode for String {
-    fn decode(data: &Bytes) -> Result<Self, Error> where
-        Self: Sized {
+    fn decode(data: &Bytes) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
         Ok(String::from_utf8_lossy(data).to_string())
     }
 }

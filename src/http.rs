@@ -1,23 +1,32 @@
-use crate::frame::Framer;
-use bytes::BytesMut;
 use crate::error::Error;
-use http::{HeaderMap, Request, Response, HeaderValue};
-use std::marker::PhantomData;
-use crate::{Encode, Decode};
+use crate::frame::Framer;
+use crate::{Decode, Encode};
+use bytes::BytesMut;
 use http::header::HeaderName;
+use http::{HeaderMap, HeaderValue, Request, Response};
+use std::marker::PhantomData;
 
 #[derive(Debug, Clone)]
 pub struct Http<T> {
     headers: HeaderMap,
-    _data: PhantomData<T>
+    _data: PhantomData<T>,
 }
 
-impl <T> Encode for Request<T> where T: Encode {
+impl<T> Encode for Request<T>
+where
+    T: Encode,
+{
     fn encode(&self, data: &mut BytesMut) -> Result<(), Error> {
         let req = self;
         data.extend_from_slice(req.method().as_str().as_bytes());
         data.extend_from_slice(&[b' ']);
-        data.extend_from_slice(req.uri().path_and_query().map(|p| p.as_str()).unwrap_or_else(|| "/").as_bytes());
+        data.extend_from_slice(
+            req.uri()
+                .path_and_query()
+                .map(|p| p.as_str())
+                .unwrap_or_else(|| "/")
+                .as_bytes(),
+        );
         data.extend_from_slice(b" HTTP/1.0\r\n");
 
         for (header, value) in req.headers().iter() {
@@ -33,7 +42,10 @@ impl <T> Encode for Request<T> where T: Encode {
     }
 }
 
-impl <T> Framer for Http<T> where T: Encode + Decode {
+impl<T> Framer for Http<T>
+where
+    T: Encode + Decode,
+{
     type Input = Request<T>;
     type Output = Response<T>;
     type MetaKey = HeaderName;

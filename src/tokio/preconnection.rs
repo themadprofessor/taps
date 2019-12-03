@@ -1,9 +1,8 @@
+use crate::frame::Framer;
 use crate::properties::TransportProperties;
 use crate::tokio::race;
 use crate::{Connection, Endpoint, Error};
 use async_trait::async_trait;
-use std::marker::PhantomData;
-use crate::frame::Framer;
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Preconnection<L, R, F> {
@@ -29,7 +28,7 @@ impl<L, R, F> crate::Preconnection<L, R, F> for Preconnection<L, R, F>
 where
     L: Send,
     R: Send,
-    F: Send + Sync + 'static + Framer + Clone
+    F: Send + Sync + 'static + Framer + Clone,
 {
     fn local_endpoint(&mut self, local: L)
     where
@@ -60,7 +59,7 @@ where
     async fn initiate(self) -> Result<Box<dyn Connection<F>>, Error>
     where
         R: Endpoint + Send,
-        F::Input: ::std::marker::Send
+        F::Input: ::std::marker::Send,
     {
         let remote = self
             .remote

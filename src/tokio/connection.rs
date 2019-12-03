@@ -1,19 +1,16 @@
-use crate::error::{Error, Send, box_error, Receive};
 use crate::error::Connection as ConnectionError;
-use crate::{Decode, Encode};
+use crate::error::{box_error, Error, Receive, Send};
+use crate::Encode;
 use async_trait::async_trait;
 use bytes::BytesMut;
 use snafu::ResultExt;
 
 use crate::error::Initiate;
-use crate::properties::{Preference, SelectionProperty, TransportProperties};
-use std::net::{SocketAddr, Shutdown};
-use tokio::io::{AsyncWriteExt, AsyncReadExt};
-use tokio::net::{TcpStream, UdpSocket};
-use std::marker::PhantomData;
-use std::collections::VecDeque;
 use crate::frame::Framer;
-use std::process::Output;
+use crate::properties::{Preference, SelectionProperty, TransportProperties};
+use std::net::{Shutdown, SocketAddr};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpStream, UdpSocket};
 
 const BUFFER_SIZE: usize = 1024;
 
@@ -47,10 +44,11 @@ impl TokioConnection {
 
     async fn close(self) -> Result<(), Error> {
         match self {
-            TokioConnection::TCP(stream) => stream.shutdown(Shutdown::Both)
+            TokioConnection::TCP(stream) => stream
+                .shutdown(Shutdown::Both)
                 .map_err(box_error)
                 .with_context(|| ConnectionError),
-            TokioConnection::UDP(socket) => Ok(())
+            TokioConnection::UDP(_socket) => Ok(()),
         }
     }
 
@@ -65,7 +63,7 @@ impl TokioConnection {
                 .recv(data)
                 .await
                 .map_err(box_error)
-                .with_context(|| Receive)
+                .with_context(|| Receive),
         }
     }
 
@@ -77,12 +75,12 @@ impl TokioConnection {
 impl<F> Connection<F>
 where
     F: Framer + 'static + ::std::marker::Send,
-    F::Input: ::std::marker::Send
+    F::Input: ::std::marker::Send,
 {
-pub async fn create(
+    pub async fn create(
         addr: SocketAddr,
         props: &TransportProperties,
-        framer: Option<F>
+        framer: Option<F>,
     ) -> Result<Box<dyn crate::Connection<F>>, Error> {
         let rely: Preference = props.get(SelectionProperty::Reliability);
         let conn = match rely {
@@ -98,7 +96,11 @@ pub async fn create(
             Preference::Prohibit => create_udp(addr).await?,
         };
 
-        Ok(Box::new(Connection::<F> { inner: conn, buffer: BytesMut::new(), framer }))
+        Ok(Box::new(Connection::<F> {
+            inner: conn,
+            buffer: BytesMut::new(),
+            framer,
+        }))
     }
 }
 
@@ -106,7 +108,7 @@ pub async fn create(
 impl<F> crate::Connection<F> for Connection<F>
 where
     F: Framer + ::std::marker::Send + 'static,
-    F::Input: ::std::marker::Send
+    F::Input: ::std::marker::Send,
 {
     async fn send(&mut self, data: F::Input) -> Result<(), Error>
     where
@@ -116,14 +118,13 @@ where
         let mut bytes = BytesMut::with_capacity(length.1.unwrap_or_else(|| length.0));
         match &mut self.framer {
             Some(framer) => framer.frame(data, &mut bytes),
-            None => data.encode(&mut bytes)
+            None => data.encode(&mut bytes),
         };
         self.inner.send(&mut bytes).await
     }
 
     async fn receive(&mut self) -> Result<F::Output, Error>
-    where
-    {
+where {
         self.buffer.reserve(BUFFER_SIZE);
         let read = self.inner.recv(&mut self.buffer).await?;
         unimplemented!()

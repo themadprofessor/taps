@@ -1,9 +1,9 @@
 use crate::connection::Connection;
 use crate::error::Error;
+use crate::frame::Framer;
 use crate::properties::TransportProperties;
 use async_trait::async_trait;
 use std::net::SocketAddr;
-use crate::frame::Framer;
 
 #[async_trait]
 pub trait Endpoint {

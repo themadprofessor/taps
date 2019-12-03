@@ -1,27 +1,27 @@
-use crate::error::{Error, box_error};
 use crate::error::Initiate;
+use crate::error::{box_error, Error};
+use crate::frame::Framer;
 use crate::properties::TransportProperties;
 use crate::tokio::connection::Connection;
 use crate::tokio::error::NoEndpoint;
 use crate::Endpoint;
 use futures::stream::FuturesUnordered;
-use futures::{FutureExt, StreamExt, Future};
+use futures::{Future, FutureExt, StreamExt};
 use snafu::{OptionExt, ResultExt};
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::time;
-use crate::frame::Framer;
 
 fn add_delay<F>(
     addr: SocketAddr,
     props: &TransportProperties,
-    framer: Option<F>
+    framer: Option<F>,
 ) -> impl Future<Output = Result<Box<dyn crate::Connection<F>>, Error>> + '_
 where
     F: Send + 'static + Framer,
-    F::Input: ::std::marker::Send
+    F::Input: ::std::marker::Send,
 {
-match addr {
+    match addr {
         SocketAddr::V4(_) => time::delay_for(Duration::from_millis(5)),
         SocketAddr::V6(_) => time::delay_for(Duration::from_nanos(0)),
     }
@@ -31,14 +31,14 @@ match addr {
 pub async fn race<E, F>(
     endpoint: E,
     props: TransportProperties,
-    framer: Option<F>
+    framer: Option<F>,
 ) -> Result<Box<dyn crate::Connection<F>>, Error>
 where
     E: Endpoint + Send,
     F: Send + 'static + Framer + Clone,
-    F::Input: ::std::marker::Send
+    F::Input: ::std::marker::Send,
 {
-endpoint
+    endpoint
         .resolve()
         .await?
         .into_iter()

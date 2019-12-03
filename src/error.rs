@@ -24,9 +24,12 @@ pub enum Error {
     Encode { source: Box<dyn StdError + StdSend> },
 
     #[snafu(display("connection terminated unexpectedly: {}", source))]
-    Connection { source: Box<dyn StdError + StdSend> }
+    Connection { source: Box<dyn StdError + StdSend> },
 }
 
-pub(crate) fn box_error<T>(error: T) -> Box<dyn StdError + StdSend> where T: StdError + StdSend + 'static {
+pub(crate) fn box_error<T>(error: T) -> Box<dyn StdError + StdSend>
+where
+    T: StdError + StdSend + 'static,
+{
     Box::new(error) as Box<dyn StdError + StdSend>
 }
