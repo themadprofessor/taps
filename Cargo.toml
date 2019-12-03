@@ -7,8 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# Async/await compatable tokio is not on crates.io
-#tokio = { git = "https://github.com/tokio-rs/tokio", tag = "tokio-0.2.0-alpha.6" }
 tokio = { git = "https://github.com/tokio-rs/tokio" }
 tokio-util = { git = "https://github.com/tokio-rs/tokio" }
 snafu = { version = "0.6.0", features = ["futures"] }
@@ -17,6 +15,6 @@ enum-map = "0.6.1"
 serde = "1.0.102"
 futures = { version = "0.3.1", features = ["compat"] }
 async-trait = "0.1.18"
-bytes = "0.4.12"
+bytes = "0.5.2"
 trust-dns-resolver = "0.18.0-alpha.1"
 http = "0.1.19"
