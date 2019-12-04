@@ -1,6 +1,6 @@
 use crate::error::Connection as ConnectionError;
 use crate::error::{box_error, Error, Receive, Send};
-use crate::Encode;
+use crate::{Decode, Encode};
 use async_trait::async_trait;
 use bytes::BytesMut;
 use snafu::ResultExt;
@@ -119,12 +119,14 @@ where
         match &mut self.framer {
             Some(framer) => framer.frame(data, &mut bytes),
             None => data.encode(&mut bytes),
-        };
+        }?;
         self.inner.send(&mut bytes).await
     }
 
     async fn receive(&mut self) -> Result<F::Output, Error>
-where {
+    where
+        F::Output: Decode,
+    {
         self.buffer.reserve(BUFFER_SIZE);
         let read = self.inner.recv(&mut self.buffer).await?;
         unimplemented!()

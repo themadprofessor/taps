@@ -1,3 +1,20 @@
+//! The TransportProperties for a Preconnection.
+//!
+//! # Default Values
+//! **NOTE: Changes to default values are not breaking changes.**
+//!
+//! Default values are specified in the documentation for each property.
+//! They should not be relied on as they can change between versions and implementations.
+//! Therefore its up to the user of this library to ensure properties are consistent by enforcing
+//! their own defaults.
+//!
+//! Currently, the default values are for a TCP connection.
+//!
+//! ## Example
+//! Say a reliable transport is required by the application, the application should not assume the
+//! default value for reliability will always be Require.
+//!
+
 use enum_map::{enum_map, EnumMap};
 use lazy_static::lazy_static;
 
@@ -58,6 +75,7 @@ pub enum Direction {
     Receiver,
 }
 
+/// The collection of properties for a Preconnection.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TransportProperties {
     select_props: EnumMap<SelectionProperty, Preference>,
@@ -151,10 +169,14 @@ impl TransportProperties {
         self
     }
 
+    /// Get the preference of the given property.
+    /// If the property has not been set, the default value will be returned.
     pub fn get(&self, prop: SelectionProperty) -> Preference {
         self.select_props[prop]
     }
 
+    /// Get the direction this Preconnection prefers.
+    /// If the direction has not be specified, the default value will be returned.
     pub fn direction(&self) -> Direction {
         self.direction
     }

@@ -1,5 +1,6 @@
 use enum_map::Enum;
 
+/// Properties used to determine possible Connections.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Enum)]
 pub enum SelectionProperty {
     /// Reliable data transfer.

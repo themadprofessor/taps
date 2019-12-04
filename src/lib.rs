@@ -3,6 +3,13 @@
 
 use bytes::{Bytes, BytesMut};
 
+pub use connection::Connection;
+pub use preconnection::*;
+
+use crate::error::Error;
+use crate::frame::Framer;
+use crate::properties::TransportProperties;
+
 mod connection;
 pub mod error;
 mod frame;
@@ -11,13 +18,54 @@ mod preconnection;
 pub mod properties;
 mod tokio;
 
-use crate::error::Error;
-use crate::frame::Framer;
-use crate::properties::TransportProperties;
-pub use connection::Connection;
-pub use preconnection::*;
-
+/// The `Encode` trait allows an object to be encoded.
+///
+/// # Implementation Example
+/// ```
+/// use taps::Encode;
+/// use bytes::BytesMut;
+/// use taps::error::Error;
+///
+/// struct MyVec(Vec<u8>);
+///
+/// impl Encode for MyVec {
+///     fn encode(&self, data: &mut BytesMut) -> Result<(), Error> {
+///         data.extend_from_slice(&self.0);
+///         Ok(())
+///     }
+///     fn size_hint(&self) -> (usize, Option<usize>) {
+///         (self.0.len(), Some(self.0.len()))
+///     }
+/// }
+/// ```
+///
+/// An example of a failable implementation.
+/// ```
+/// use taps::Encode;
+/// use bytes::BytesMut;
+/// use taps::error::Error;
+/// use std::convert::TryInto;
+/// use snafu::ResultExt;
+///
+/// struct MyFallible(Option<Vec<u8>>);
+///
+/// impl <T> Encode for T where T: TryInto<MyFallible> {
+///     fn encode(&self, data: &mut BytesMut) -> Result<(), Error> {
+///         let vec = self.try_into().with_context(|| ::taps::error::Encode)?.0;
+///         data.extend_from_slice(&vec);
+///         Ok(())
+///     }
+/// }
+/// ```
 pub trait Encode {
+    /// Encode self into the given BytesMut.
+    ///
+    /// # Error
+    /// Return `Ok(())` if the encoding was successful.
+    ///
+    /// Return `Err(error::Error::Encode)` if the encode failed.
+    /// See example on how to produce this type.
+    ///
     fn encode(&self, data: &mut BytesMut) -> Result<(), error::Error>;
     fn size_hint(&self) -> (usize, Option<usize>) {
         (0, None)
