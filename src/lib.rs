@@ -20,6 +20,8 @@ mod tokio;
 
 /// The `Encode` trait allows an object to be encoded.
 ///
+///
+///
 /// # Implementation Example
 /// ```
 /// use taps::Encode;
@@ -43,15 +45,31 @@ mod tokio;
 /// ```
 /// use taps::Encode;
 /// use bytes::BytesMut;
-/// use taps::error::Error;
+/// use taps::error::{Error, box_error};
 /// use std::convert::TryInto;
+/// use std::fmt;
 /// use snafu::ResultExt;
+/// use serde::export::Formatter;
 ///
 /// struct MyFallible(Option<Vec<u8>>);
 ///
-/// impl <T> Encode for T where T: TryInto<MyFallible> {
+/// #[derive(Debug)]
+/// struct EmptyOption;
+///
+/// impl fmt::Display for EmptyOption {
+///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+///         f.write_str("empty option")
+///     }
+/// }
+///
+/// impl ::std::error::Error for EmptyOption {}
+///
+/// impl Encode for MyFallible {
 ///     fn encode(&self, data: &mut BytesMut) -> Result<(), Error> {
-///         let vec = self.try_into().with_context(|| ::taps::error::Encode)?.0;
+///         let vec = self.0.as_ref()
+///             .ok_or_else(|| EmptyOption)
+///             .map_err(box_error)
+///             .with_context(|| ::taps::error::Encode)?;
 ///         data.extend_from_slice(&vec);
 ///         Ok(())
 ///     }
@@ -67,12 +85,34 @@ pub trait Encode {
     /// See example on how to produce this type.
     ///
     fn encode(&self, data: &mut BytesMut) -> Result<(), error::Error>;
+
+    /// Returns the bounds of the expected encoded length of this object.
+    ///
+    /// Specifically, `size_hint()` returns a tuple where the first element is the lower bound, and
+    /// the second element is the upper bound.
+    ///
+    /// The second element of the tuple is an `Option<usize>`. A `None` here means there is no upper
+    /// bound, or the upper bound is larger than `usize`.
+    ///
+    /// # Implementation notes
+    ///
+    /// This is primarily used to reserve space in the `BytesMut` given to `encode`. Specifically,
+    /// if the second element is `Some(val)`, then `val` bytes will be reserved. If the second
+    /// element is `None`, then the first element is used as the number of bytes to reserve.
+    ///
+    /// Since this is primarily used for optimisations, the validity of the returned value must not
+    /// be relied on to ensure safety. E.G. an invalid return value should not lead to memory safety
+    /// violations.
+    ///
+    /// The default implementation is `(0, None)` which is always valid.
     fn size_hint(&self) -> (usize, Option<usize>) {
         (0, None)
     }
 }
 
+/// The `Decode` trait allows an object to be decoded.
 pub trait Decode {
+    /// Attempt to decode an object from the given `Bytes`.
     fn decode(data: &Bytes) -> Result<Self, error::Error>
     where
         Self: Sized;

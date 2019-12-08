@@ -27,7 +27,9 @@ pub enum Error {
     Connection { source: Box<dyn StdError + StdSend> },
 }
 
-pub(crate) fn box_error<T>(error: T) -> Box<dyn StdError + StdSend>
+/// A utility function which boxes the given error, and returns a trait object which can be used
+/// with [Error](enum.Error.html).
+pub fn box_error<T>(error: T) -> Box<dyn StdError + StdSend>
 where
     T: StdError + StdSend + 'static,
 {
