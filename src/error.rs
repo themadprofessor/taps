@@ -23,6 +23,9 @@ pub enum Error {
     #[snafu(display("failed to encode data: {}", source))]
     Encode { source: Box<dyn StdError + StdSend> },
 
+    #[snafu(display("failed to decode data: {}", source))]
+    Decode { source: Box<dyn StdError + StdSend> },
+
     #[snafu(display("connection terminated unexpectedly: {}", source))]
     Connection { source: Box<dyn StdError + StdSend> },
 }

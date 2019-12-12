@@ -64,6 +64,6 @@ where
         let remote = self
             .remote
             .expect("cannot initiate a connection without a remote endpoint");
-        race::race(remote, self.props, self.framer).await
+        race::race(remote, self.props, self.framer.unwrap()).await
     }
 }

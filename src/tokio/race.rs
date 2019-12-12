@@ -15,7 +15,7 @@ use tokio::time;
 fn add_delay<F>(
     addr: SocketAddr,
     props: &TransportProperties,
-    framer: Option<F>,
+    framer: F,
 ) -> impl Future<Output = Result<Box<dyn crate::Connection<F>>, Error>> + '_
 where
     F: Send + 'static + Framer,
@@ -31,7 +31,7 @@ where
 pub async fn race<E, F>(
     endpoint: E,
     props: TransportProperties,
-    framer: Option<F>,
+    framer: F,
 ) -> Result<Box<dyn crate::Connection<F>>, Error>
 where
     E: Endpoint + Send,

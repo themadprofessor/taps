@@ -17,7 +17,7 @@ const BUFFER_SIZE: usize = 1024;
 pub struct Connection<F> {
     inner: TokioConnection,
     buffer: BytesMut,
-    framer: Option<F>,
+    framer: F,
 }
 
 enum TokioConnection {
@@ -29,8 +29,9 @@ impl TokioConnection {
     async fn send(&mut self, data: &mut BytesMut) -> Result<(), Error> {
         match self {
             TokioConnection::TCP(stream) => stream
-                .write_all(data)
+                .write_buf(data)
                 .await
+                .map(|_| {})
                 .map_err(box_error)
                 .with_context(|| Send),
             TokioConnection::UDP(socket) => socket
@@ -55,7 +56,7 @@ impl TokioConnection {
     async fn recv(&mut self, data: &mut BytesMut) -> Result<usize, Error> {
         match self {
             TokioConnection::TCP(stream) => stream
-                .read(data)
+                .read_buf(data)
                 .await
                 .map_err(box_error)
                 .with_context(|| Receive),
@@ -80,7 +81,7 @@ where
     pub async fn create(
         addr: SocketAddr,
         props: &TransportProperties,
-        framer: Option<F>,
+        framer: F,
     ) -> Result<Box<dyn crate::Connection<F>>, Error> {
         let rely: Preference = props.get(SelectionProperty::Reliability);
         let conn = match rely {
@@ -116,10 +117,7 @@ where
     {
         let length = data.size_hint();
         let mut bytes = BytesMut::with_capacity(length.1.unwrap_or_else(|| length.0));
-        match &mut self.framer {
-            Some(framer) => framer.frame(data, &mut bytes),
-            None => data.encode(&mut bytes),
-        }?;
+        self.framer.frame(data, &mut bytes)?;
         self.inner.send(&mut bytes).await
     }
 
@@ -129,7 +127,7 @@ where
     {
         self.buffer.reserve(BUFFER_SIZE);
         let read = self.inner.recv(&mut self.buffer).await?;
-        unimplemented!()
+        self.framer.deframe(&mut self.buffer).map(Option::unwrap)
     }
 
     async fn close(self: Box<Self>) -> Result<(), Error> {

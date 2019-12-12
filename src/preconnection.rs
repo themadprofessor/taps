@@ -3,8 +3,8 @@ use crate::error::Error;
 use crate::frame::Framer;
 use crate::properties::TransportProperties;
 use async_trait::async_trait;
-use std::net::SocketAddr;
 use futures::StreamExt;
+use std::net::SocketAddr;
 
 /// The `Endpoint` trait allows resolving a domain name into `SocketAddr`s.
 #[async_trait]

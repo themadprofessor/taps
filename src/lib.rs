@@ -1,13 +1,13 @@
 #![allow(dead_code)]
 #![forbid(unsafe_code)]
 
-use bytes::{Bytes, BytesMut};
+use bytes::{Buf, Bytes, BytesMut};
 
 pub use connection::Connection;
+pub use frame::Framer;
 pub use preconnection::*;
 
 use crate::error::Error;
-use crate::frame::Framer;
 use crate::properties::TransportProperties;
 
 mod connection;
@@ -112,8 +112,8 @@ pub trait Encode {
 
 /// The `Decode` trait allows an object to be decoded.
 pub trait Decode {
-    /// Attempt to decode an object from the given `Bytes`.
-    fn decode(data: &Bytes) -> Result<Self, error::Error>
+    /// Attempt to decode an object from the given `Bytes.
+    fn decode(data: &mut BytesMut) -> Result<Self, error::Error>
     where
         Self: Sized;
 }
@@ -152,7 +152,7 @@ impl Encode for String {
 }
 
 impl Decode for () {
-    fn decode(_data: &Bytes) -> Result<Self, Error>
+    fn decode(_data: &mut BytesMut) -> Result<Self, Error>
     where
         Self: Sized,
     {
@@ -161,16 +161,18 @@ impl Decode for () {
 }
 
 impl Decode for Vec<u8> {
-    fn decode(data: &Bytes) -> Result<Self, Error>
+    fn decode(data: &mut BytesMut) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        Ok(data.to_vec())
+        let res = data.to_vec();
+        data.advance(res.len());
+        Ok(res)
     }
 }
 
 impl Decode for String {
-    fn decode(data: &Bytes) -> Result<Self, Error>
+    fn decode(data: &mut BytesMut) -> Result<Self, Error>
     where
         Self: Sized,
     {
