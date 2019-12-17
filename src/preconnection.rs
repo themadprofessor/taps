@@ -4,6 +4,8 @@ use crate::frame::Framer;
 use crate::properties::TransportProperties;
 use async_trait::async_trait;
 use futures::StreamExt;
+use std::error::Error as StdError;
+use std::marker::Send as StdSend;
 use std::net::SocketAddr;
 
 /// The `Endpoint` trait allows resolving a domain name into `SocketAddr`s.
@@ -24,6 +26,8 @@ where
 
 #[async_trait]
 pub trait Preconnection<L, R, F> {
+    type Error: StdSend + StdError;
+
     fn local_endpoint(&mut self, local: L)
     where
         L: Endpoint;
@@ -38,7 +42,7 @@ pub trait Preconnection<L, R, F> {
 
     fn add_framer(&mut self, framer: F);
 
-    async fn initiate(self) -> Result<Box<dyn Connection<F>>, Error>
+    async fn initiate(self) -> Result<Box<dyn Connection<F, Error = Self::Error>>, Self::Error>
     where
         R: Endpoint + Send,
         F: Framer + Send,

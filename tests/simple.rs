@@ -8,10 +8,9 @@ use taps::{Endpoint, Preconnection};
 
 #[tokio::test]
 async fn simple_tcp() {
-    let mut preconnection =
-        ::taps::new_preconnection::<Vec<u8>, SocketAddr, SocketAddr, Http<String>>(
-            TransportProperties::default(),
-        );
+    let mut preconnection = ::taps::new_preconnection::<SocketAddr, SocketAddr, Http<String>>(
+        TransportProperties::default(),
+    );
 
     preconnection.remote_endpoint(SocketAddr::from_str("1.1.1.1:80").unwrap());
     preconnection.add_framer(Http::default());

@@ -1,7 +1,9 @@
 #![allow(dead_code)]
 #![forbid(unsafe_code)]
 
-use bytes::{Buf, Bytes, BytesMut};
+use bytes::{Buf, BytesMut};
+use std::error::Error as StdError;
+use std::marker::Send as StdSend;
 
 pub use connection::Connection;
 pub use frame::Framer;
@@ -20,18 +22,17 @@ mod tokio;
 
 /// The `Encode` trait allows an object to be encoded.
 ///
-///
-///
 /// # Implementation Example
 /// ```
 /// use taps::Encode;
 /// use bytes::BytesMut;
-/// use taps::error::Error;
 ///
 /// struct MyVec(Vec<u8>);
 ///
 /// impl Encode for MyVec {
-///     fn encode(&self, data: &mut BytesMut) -> Result<(), Error> {
+///     type Error = ::std::convert::Infallible;
+///
+///     fn encode(&self, data: &mut BytesMut) -> Result<(), Self::Error> {
 ///         data.extend_from_slice(&self.0);
 ///         Ok(())
 ///     }
@@ -45,11 +46,7 @@ mod tokio;
 /// ```
 /// use taps::Encode;
 /// use bytes::BytesMut;
-/// use taps::error::{Error, box_error};
-/// use std::convert::TryInto;
 /// use std::fmt;
-/// use snafu::ResultExt;
-/// use serde::export::Formatter;
 ///
 /// struct MyFallible(Option<Vec<u8>>);
 ///
@@ -65,26 +62,26 @@ mod tokio;
 /// impl ::std::error::Error for EmptyOption {}
 ///
 /// impl Encode for MyFallible {
-///     fn encode(&self, data: &mut BytesMut) -> Result<(), Error> {
+///     type Error = EmptyOption;
+///
+///     fn encode(&self, data: &mut BytesMut) -> Result<(), Self::Error> {
 ///         let vec = self.0.as_ref()
-///             .ok_or_else(|| EmptyOption)
-///             .map_err(box_error)
-///             .with_context(|| ::taps::error::Encode)?;
+///             .ok_or_else(|| EmptyOption)?;
 ///         data.extend_from_slice(&vec);
 ///         Ok(())
 ///     }
 /// }
 /// ```
 pub trait Encode {
+    type Error: StdSend + StdError;
+
     /// Encode self into the given BytesMut.
     ///
     /// # Error
     /// Return `Ok(())` if the encoding was successful.
     ///
-    /// Return `Err(error::Error::Encode)` if the encode failed.
-    /// See example on how to produce this type.
-    ///
-    fn encode(&self, data: &mut BytesMut) -> Result<(), error::Error>;
+    /// Return `Err(Self::Error)` if the encode failed.
+    fn encode(&self, data: &mut BytesMut) -> Result<(), Self::Error>;
 
     /// Returns the bounds of the expected encoded length of this object.
     ///
@@ -112,14 +109,18 @@ pub trait Encode {
 
 /// The `Decode` trait allows an object to be decoded.
 pub trait Decode {
+    type Error: StdSend + StdError;
+
     /// Attempt to decode an object from the given `Bytes.
-    fn decode(data: &mut BytesMut) -> Result<Self, error::Error>
+    fn decode(data: &mut BytesMut) -> Result<Self, Self::Error>
     where
         Self: Sized;
 }
 
 impl Encode for &[u8] {
-    fn encode(&self, data: &mut BytesMut) -> Result<(), Error> {
+    type Error = ::std::convert::Infallible;
+
+    fn encode(&self, data: &mut BytesMut) -> Result<(), Self::Error> {
         data.extend_from_slice(self);
         Ok(())
     }
@@ -130,7 +131,9 @@ impl Encode for &[u8] {
 }
 
 impl Encode for &str {
-    fn encode(&self, data: &mut BytesMut) -> Result<(), Error> {
+    type Error = ::std::convert::Infallible;
+
+    fn encode(&self, data: &mut BytesMut) -> Result<(), Self::Error> {
         data.extend_from_slice(self.as_bytes());
         Ok(())
     }
@@ -141,7 +144,9 @@ impl Encode for &str {
 }
 
 impl Encode for String {
-    fn encode(&self, data: &mut BytesMut) -> Result<(), Error> {
+    type Error = ::std::convert::Infallible;
+
+    fn encode(&self, data: &mut BytesMut) -> Result<(), Self::Error> {
         data.extend_from_slice(self.as_ref());
         Ok(())
     }
@@ -152,7 +157,9 @@ impl Encode for String {
 }
 
 impl Decode for () {
-    fn decode(_data: &mut BytesMut) -> Result<Self, Error>
+    type Error = ::std::convert::Infallible;
+
+    fn decode(_data: &mut BytesMut) -> Result<Self, Self::Error>
     where
         Self: Sized,
     {
@@ -161,7 +168,9 @@ impl Decode for () {
 }
 
 impl Decode for Vec<u8> {
-    fn decode(data: &mut BytesMut) -> Result<Self, Error>
+    type Error = ::std::convert::Infallible;
+
+    fn decode(data: &mut BytesMut) -> Result<Self, Self::Error>
     where
         Self: Sized,
     {
@@ -172,7 +181,9 @@ impl Decode for Vec<u8> {
 }
 
 impl Decode for String {
-    fn decode(data: &mut BytesMut) -> Result<Self, Error>
+    type Error = ::std::convert::Infallible;
+
+    fn decode(data: &mut BytesMut) -> Result<Self, Self::Error>
     where
         Self: Sized,
     {
@@ -180,7 +191,19 @@ impl Decode for String {
     }
 }
 
-pub fn new_preconnection<T, L, R, F>(props: TransportProperties) -> impl Preconnection<L, R, F>
+/// Create a new [Preconnection](trait.Preconnection.html).
+///
+/// This is the main entry point of TAPS.
+///
+/// # Example
+///
+/// ```
+/// use taps::properties::TransportProperties;
+/// use std::net::SocketAddr;
+/// use taps::http::Http;
+/// let preconnection = taps::new_preconnection::<SocketAddr, SocketAddr, Http<String>>(TransportProperties::default());
+/// ```
+pub fn new_preconnection<L, R, F>(props: TransportProperties) -> impl Preconnection<L, R, F>
 where
     L: Endpoint + Send,
     R: Endpoint + Send,

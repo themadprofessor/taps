@@ -1,7 +1,8 @@
 use crate::frame::Framer;
 use crate::properties::TransportProperties;
+use crate::tokio::error::Error;
 use crate::tokio::race;
-use crate::{Connection, Endpoint, Error};
+use crate::{Connection, Endpoint};
 use async_trait::async_trait;
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -30,6 +31,8 @@ where
     R: Send,
     F: Send + Sync + 'static + Framer + Clone,
 {
+    type Error = Error;
+
     fn local_endpoint(&mut self, local: L)
     where
         L: Endpoint,
@@ -56,7 +59,7 @@ where
         self.framer = Some(framer)
     }
 
-    async fn initiate(self) -> Result<Box<dyn Connection<F>>, Error>
+    async fn initiate(self) -> Result<Box<dyn Connection<F, Error = Self::Error>>, Self::Error>
     where
         R: Endpoint + Send,
         F::Input: ::std::marker::Send,

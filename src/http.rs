@@ -1,13 +1,14 @@
-use crate::error::Decode as DecodeError;
-use crate::error::{box_error, Error};
+use crate::error::box_error;
 use crate::frame::Framer;
 use crate::{Decode, Encode};
 use bytes::{Buf, Bytes, BytesMut};
 use http::header::HeaderName;
 use http::version::Version as HttpVersion;
 use http::{HeaderMap, HeaderValue, Request, Response};
-use snafu::{ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
+use std::error::Error as StdError;
 use std::marker::PhantomData;
+use std::marker::Send as StdSend;
 
 #[derive(Debug, Clone, Default)]
 pub struct Http<T> {
@@ -25,13 +26,22 @@ pub enum HttpError {
 
     #[snafu(display("malformed status line"))]
     MalformedStatusLine,
+
+    #[snafu(display("invalid header: {}", source))]
+    InvalidHeader { source: http::Error },
+
+    #[snafu(display("invalid body: {}", source))]
+    InvalidBody { source: Box<dyn StdError + StdSend> },
 }
 
 impl<T> Encode for Request<T>
 where
     T: Encode,
+    <T as Encode>::Error: 'static,
 {
-    fn encode(&self, data: &mut BytesMut) -> Result<(), Error> {
+    type Error = HttpError;
+
+    fn encode(&self, data: &mut BytesMut) -> Result<(), Self::Error> {
         let req = self;
         data.extend_from_slice(req.method().as_str().as_bytes());
         data.extend_from_slice(&[b' ']);
@@ -54,15 +64,21 @@ where
         }
         data.extend_from_slice(b"\r\n");
 
-        req.body().encode(data)
+        req.body()
+            .encode(data)
+            .map_err(box_error)
+            .with_context(|| InvalidBody)
     }
 }
 
 impl<T> Decode for Response<T>
 where
     T: Decode,
+    <T as Decode>::Error: 'static,
 {
-    fn decode(data: &mut BytesMut) -> Result<Self, Error>
+    type Error = HttpError;
+
+    fn decode(data: &mut BytesMut) -> Result<Self, Self::Error>
     where
         Self: Sized,
     {
@@ -73,24 +89,16 @@ where
         let mut status_line = iter
             .next()
             .and_then(|l| if l.is_empty() { None } else { Some(l) })
-            .ok_or_else(|| box_error(HttpError::MissingStatusLine))
-            .with_context(|| DecodeError)?
+            .with_context(|| MissingStatusLine)?
             .split(' ');
 
         response = response.version(status_line_to_version(
-            status_line
-                .next()
-                .ok_or_else(|| box_error(HttpError::MalformedStatusLine))
-                .with_context(|| DecodeError)?,
+            status_line.next().with_context(|| MalformedStatusLine)?,
         )?);
-        response = response.status(
-            status_line
-                .next()
-                .ok_or_else(|| box_error(HttpError::MalformedStatusLine))
-                .with_context(|| DecodeError)?,
-        );
+        response = response.status(status_line.next().with_context(|| MalformedStatusLine)?);
 
         for line in iter {
+            // Stop at first empty line as this signals end of headers
             if line.is_empty() {
                 break;
             }
@@ -99,42 +107,41 @@ where
             let name = split.next();
             let value = split.next();
 
-            if name.is_none() || value.is_none() {
-                continue;
+            if name.is_some() && value.is_some() {
+                response = response.header(name.unwrap(), value.unwrap());
             }
-
-            response = response.header(name.unwrap(), value.unwrap());
         }
 
         let header_len = full_response
             .find("\r\n\r\n")
-            .ok_or_else(|| box_error(HttpError::MissingEmptyLine))
-            .with_context(|| DecodeError)?
-            + 4;
+            .with_context(|| MissingEmptyLine)?
+            + 4; // Find returns the index of the first char in the pattern
         data.advance(header_len);
-        let body = T::decode(data)?;
-
-        response
-            .body(body)
+        let body = T::decode(data)
             .map_err(box_error)
-            .with_context(|| DecodeError)
+            .with_context(|| InvalidBody)?;
+
+        response.body(body).with_context(|| InvalidHeader)
     }
 }
 
 impl<T> Framer for Http<T>
 where
     T: Encode + Decode,
+    <T as Encode>::Error: 'static,
+    <T as Decode>::Error: 'static,
 {
     type Input = Request<T>;
     type Output = Response<T>;
     type MetaKey = HeaderName;
     type MetaValue = HeaderValue;
+    type Error = HttpError;
 
-    fn frame(&mut self, item: Self::Input, dst: &mut BytesMut) -> Result<(), Error> {
+    fn frame(&mut self, item: Self::Input, dst: &mut BytesMut) -> Result<(), Self::Error> {
         item.encode(dst)
     }
 
-    fn deframe(&mut self, src: &mut BytesMut) -> Result<Option<Self::Output>, Error> {
+    fn deframe(&mut self, src: &mut BytesMut) -> Result<Option<Self::Output>, Self::Error> {
         Self::Output::decode(src).map(Some)
     }
 
@@ -143,12 +150,11 @@ where
     }
 }
 
-fn status_line_to_version(status_line: &str) -> Result<HttpVersion, Error> {
+fn status_line_to_version(status_line: &str) -> Result<HttpVersion, HttpError> {
     let ver_str = status_line
         .split('/')
         .nth(1)
-        .ok_or_else(|| box_error(HttpError::MalformedStatusLine))
-        .with_context(|| DecodeError)?;
+        .with_context(|| MalformedStatusLine)?;
 
     match ver_str {
         "0.9" => Ok(HttpVersion::HTTP_09),
@@ -156,9 +162,7 @@ fn status_line_to_version(status_line: &str) -> Result<HttpVersion, Error> {
         "1.1" => Ok(HttpVersion::HTTP_11),
         "2.0" => Ok(HttpVersion::HTTP_2),
         "3.0" => Ok(HttpVersion::HTTP_3),
-        _ => Err(Error::Decode {
-            source: box_error(HttpError::MalformedStatusLine),
-        }),
+        _ => Err(HttpError::MalformedStatusLine),
     }
 }
 
