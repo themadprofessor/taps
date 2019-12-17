@@ -1,5 +1,5 @@
 use crate::tokio::error::Send as SendError;
-use crate::tokio::error::{Close, Connect, Deframe, Error, Frame, Open, Receive};
+use crate::tokio::error::{Close, Deframe, Error, Frame, Open, Receive};
 use crate::{Decode, Encode};
 use async_trait::async_trait;
 use bytes::BytesMut;
@@ -14,6 +14,7 @@ use tokio::net::{TcpStream, UdpSocket};
 
 const BUFFER_SIZE: usize = 1024;
 
+/// Tokio-based [Connection](../trait.Connection.html) implementation.
 pub struct Connection<F> {
     inner: TokioConnection,
     buffer: BytesMut,
@@ -31,7 +32,7 @@ impl TokioConnection {
             TokioConnection::TCP(stream) => stream
                 .write_buf(data)
                 .await
-                .map(|_| {})
+                .map(|_| ())
                 .with_context(|| SendError),
             TokioConnection::UDP(socket) => socket
                 .send(data)
@@ -56,7 +57,7 @@ impl TokioConnection {
     }
 
     fn abort(self) {
-        // Drop self, as underlying types close abort on drop
+        // Drop self, as underlying types abort on drop
     }
 }
 
@@ -118,7 +119,7 @@ where
         F::Output: Decode,
     {
         self.buffer.reserve(BUFFER_SIZE);
-        let read = self.inner.recv(&mut self.buffer).await?;
+        let _read = self.inner.recv(&mut self.buffer).await?;
         self.framer
             .deframe(&mut self.buffer)
             .map(Option::unwrap)

@@ -1,4 +1,3 @@
-use crate::error::Error;
 use bytes::BytesMut;
 use std::error::Error as StdError;
 use std::marker::Send as StdSend;

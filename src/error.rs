@@ -3,7 +3,7 @@ use std::error::Error as StdError;
 use std::marker::Send as StdSend;
 
 #[derive(Debug, Snafu)]
-#[snafu(visibility(pub))]
+#[snafu(visibility(pub(crate)))]
 pub enum Error {
     #[snafu(display("failed to initiate connection: {}", source))]
     Initiate { source: Box<dyn StdError + StdSend> },

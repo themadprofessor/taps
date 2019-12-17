@@ -3,10 +3,11 @@ use crate::frame::Framer;
 use crate::properties::TransportProperties;
 use async_trait::async_trait;
 use std::error::Error as StdError;
+use std::fmt;
 use std::marker::Send as StdSend;
 use std::net::SocketAddr;
-use std::fmt;
 
+/// Error used when an endpoint is required but not specified.
 #[derive(Debug)]
 pub struct MissingEndpoint;
 
@@ -19,6 +20,9 @@ impl fmt::Display for MissingEndpoint {
 impl StdError for MissingEndpoint {}
 
 /// The `Endpoint` trait allows resolving a domain name into `SocketAddr`s.
+///
+/// This trait does not have a blanket impl for `ToSocketAddr`, because that trait only resolves
+/// into a single `SocketAddr`.
 #[async_trait]
 pub trait Endpoint {
     type Error: StdSend + StdError;
@@ -39,6 +43,7 @@ impl Endpoint for SocketAddr {
 impl Endpoint for () {
     type Error = MissingEndpoint;
 
+    #[allow(clippy::unit_arg)]
     async fn resolve(self) -> Result<Vec<SocketAddr>, Self::Error> {
         Err(MissingEndpoint)
     }

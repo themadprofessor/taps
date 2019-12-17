@@ -1,7 +1,8 @@
+use crate::error::box_error;
 use crate::frame::Framer;
 use crate::properties::TransportProperties;
 use crate::tokio::connection::Connection;
-use crate::tokio::error::{Connect, Error, NoEndpoint, Resolve};
+use crate::tokio::error::{Error, NoEndpoint, Resolve};
 use crate::Endpoint;
 use futures::stream::FuturesUnordered;
 use futures::{Future, FutureExt, StreamExt};
@@ -9,7 +10,6 @@ use snafu::{OptionExt, ResultExt};
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::time;
-use crate::error::box_error;
 
 fn add_delay<F>(
     addr: SocketAddr,
@@ -34,7 +34,7 @@ pub async fn race<E, F>(
 ) -> Result<Box<dyn crate::Connection<F, Error = Error>>, Error>
 where
     E: Endpoint + Send,
-    <E as Endpoint>::Error:'static,
+    <E as Endpoint>::Error: 'static,
     F: Send + 'static + Framer + Clone,
     F::Input: ::std::marker::Send,
 {

@@ -2,21 +2,20 @@
 #![forbid(unsafe_code)]
 
 pub use connection::Connection;
-pub use frame::Framer;
-pub use preconnection::*;
 pub use encode::*;
+pub use frame::Framer;
+pub use preconnection::{Endpoint, Preconnection};
 
-use crate::error::Error;
 use crate::properties::TransportProperties;
 
 mod connection;
-pub mod error;
 mod encode;
+pub mod error;
 mod frame;
 pub mod http;
 mod preconnection;
 pub mod properties;
-mod tokio;
+pub mod tokio;
 
 /// Create a new [Preconnection](trait.Preconnection.html).
 ///
@@ -25,11 +24,11 @@ mod tokio;
 /// # Example
 ///
 /// ```
+/// # use std::net::{SocketAddr, SocketAddrV4};
+/// # use std::str::FromStr;
 /// use taps::properties::TransportProperties;
 /// use taps::prelude::*;
-/// use std::net::{SocketAddr, SocketAddrV4};
 /// use taps::http::Http;
-/// use std::str::FromStr;
 /// let mut preconnection = taps::new_preconnection::<(), _, Http<String>>(TransportProperties::default());
 /// preconnection.remote_endpoint(SocketAddr::from_str("1.1.1.1:80").unwrap());
 /// ```
@@ -39,12 +38,13 @@ where
     R: Endpoint + Send,
     F: Framer + Send + Sync + Clone + 'static,
 {
-    crate::tokio::preconnection::Preconnection::new(props)
+    crate::tokio::Preconnection::new(props)
 }
 
+/// TAPS prelude, intended for glob imports.
 pub mod prelude {
-    pub use crate::preconnection::{Endpoint, Preconnection};
     pub use crate::connection::Connection;
-    pub use crate::frame::Framer;
     pub use crate::encode::*;
+    pub use crate::frame::Framer;
+    pub use crate::preconnection::{Endpoint, Preconnection};
 }

@@ -22,7 +22,6 @@ From the IETF TAPS Architecture draft:
 - [Security](#security)
 - [Background](#background)
 - [Install](#install)
-- [Usage](#usage)
 - [API](#api)
 - [Contributing](#contributing)
 - [License](#license)
@@ -33,7 +32,7 @@ This library is in the very early stages of development, as such has not be inde
 Attempts are made to ensure minimal security vulnerabilities through the use of [cargo-audit](https://github.com/RustSec/cargo-audit)
 when pushes are made to the library.
 
-**NOT FOR PRODUCTION**
+**NOT READY FOR PRODUCTION**
 
 ## Background
 
@@ -49,6 +48,11 @@ Add the following to your Cargo.toml
 ```toml
 [dependencies]
 taps = { git = "https://github.com/themadprofessor/taps.git" }
+```
+
+Documentation can be built with the repo cloned and running:
+```shell script
+cargo doc --open
 ```
 
 ## API

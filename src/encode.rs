@@ -3,7 +3,6 @@ use bytes::{Buf, BytesMut};
 use std::error::Error as StdError;
 use std::marker::Send as StdSend;
 
-
 /// The `Encode` trait allows an object to be encoded.
 ///
 /// # Implementation Example
@@ -97,8 +96,8 @@ pub trait Decode {
 
     /// Attempt to decode an object from the given `Bytes.
     fn decode(data: &mut BytesMut) -> Result<Self, Self::Error>
-        where
-            Self: Sized;
+    where
+        Self: Sized;
 }
 
 impl Encode for &[u8] {
@@ -144,8 +143,8 @@ impl Decode for () {
     type Error = ::std::convert::Infallible;
 
     fn decode(_data: &mut BytesMut) -> Result<Self, Self::Error>
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         Ok(())
     }
@@ -155,8 +154,8 @@ impl Decode for Vec<u8> {
     type Error = ::std::convert::Infallible;
 
     fn decode(data: &mut BytesMut) -> Result<Self, Self::Error>
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         let res = data.to_vec();
         data.advance(res.len());
@@ -168,8 +167,8 @@ impl Decode for String {
     type Error = ::std::convert::Infallible;
 
     fn decode(data: &mut BytesMut) -> Result<Self, Self::Error>
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         Ok(String::from_utf8_lossy(data).to_string())
     }

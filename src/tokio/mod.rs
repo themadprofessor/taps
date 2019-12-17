@@ -1,4 +1,11 @@
-pub mod connection;
+//! Tokio-based TAPS implementation.
+//!
+//! This is an internal module and is not intended for direct use.
+
+mod connection;
 mod error;
-pub mod preconnection;
+mod preconnection;
 mod race;
+
+pub use connection::Connection;
+pub use preconnection::Preconnection;

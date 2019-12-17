@@ -5,6 +5,7 @@ use crate::tokio::race;
 use crate::{Connection, Endpoint};
 use async_trait::async_trait;
 
+/// Tokio-based [Preconnection](../trait.Preconnection.html) implementation.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Preconnection<L, R, F> {
     props: TransportProperties,
