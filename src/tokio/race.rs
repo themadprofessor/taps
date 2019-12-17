@@ -9,6 +9,7 @@ use snafu::{OptionExt, ResultExt};
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::time;
+use crate::error::box_error;
 
 fn add_delay<F>(
     addr: SocketAddr,
@@ -33,12 +34,14 @@ pub async fn race<E, F>(
 ) -> Result<Box<dyn crate::Connection<F, Error = Error>>, Error>
 where
     E: Endpoint + Send,
+    <E as Endpoint>::Error:'static,
     F: Send + 'static + Framer + Clone,
     F::Input: ::std::marker::Send,
 {
     endpoint
         .resolve()
         .await
+        .map_err(box_error)
         .with_context(|| Resolve)?
         .into_iter()
         .map(|addr| add_delay(addr, &props, framer.clone()))

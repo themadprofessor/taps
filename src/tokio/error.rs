@@ -6,7 +6,7 @@ use std::marker::Send as StdSend;
 #[snafu(visibility(pub))]
 pub enum Error {
     #[snafu(display("failed to resolve endpoint: {}", source))]
-    Resolve { source: crate::error::Error },
+    Resolve { source: Box<dyn StdError + StdSend> },
 
     #[snafu(display("endpoint resolved to nothing"))]
     NoEndpoint,

@@ -62,6 +62,7 @@ where
     async fn initiate(self) -> Result<Box<dyn Connection<F, Error = Self::Error>>, Self::Error>
     where
         R: Endpoint + Send,
+        <R as Endpoint>::Error: 'static,
         F::Input: ::std::marker::Send,
     {
         let remote = self
