@@ -1,8 +1,9 @@
 use crate::frame::Framer;
 use crate::properties::TransportProperties;
+use crate::resolve::Endpoint;
 use crate::tokio::error::Error;
 use crate::tokio::race;
-use crate::{Connection, Endpoint};
+use crate::Connection;
 use async_trait::async_trait;
 
 /// Tokio-based [Preconnection](../trait.Preconnection.html) implementation.

@@ -4,7 +4,8 @@
 pub use connection::Connection;
 pub use encode::*;
 pub use frame::Framer;
-pub use preconnection::{Endpoint, Preconnection};
+pub use preconnection::Preconnection;
+pub use resolve::*;
 
 use crate::properties::TransportProperties;
 
@@ -15,6 +16,7 @@ mod frame;
 pub mod http;
 mod preconnection;
 pub mod properties;
+mod resolve;
 pub mod tokio;
 
 /// Create a new [Preconnection](trait.Preconnection.html).
@@ -46,5 +48,6 @@ pub mod prelude {
     pub use crate::connection::Connection;
     pub use crate::encode::*;
     pub use crate::frame::Framer;
-    pub use crate::preconnection::{Endpoint, Preconnection};
+    pub use crate::preconnection::Preconnection;
+    pub use crate::resolve::Endpoint;
 }

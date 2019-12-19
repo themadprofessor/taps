@@ -16,6 +16,5 @@ serde = "1.0"
 futures = { version = "0.3", features = ["compat"] }
 async-trait = "0.1"
 bytes = "0.5"
-# Waiting for upstream fix
-#trust-dns-resolver = "0.18.0-alpha.1"
 http = "0.2"
+dns-lookup = "1.0"
