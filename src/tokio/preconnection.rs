@@ -61,7 +61,7 @@ where
         self.framer = Some(framer)
     }
 
-    async fn initiate(self) -> Result<Box<dyn Connection<F, Error = Self::Error>>, Self::Error>
+    async fn initiate(self) -> Result<Box<dyn Connection<F, Error = Self::Error> + Send>, Self::Error>
     where
         R: Endpoint + Send,
         <R as Endpoint>::Error: 'static,

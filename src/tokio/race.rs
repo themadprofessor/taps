@@ -2,7 +2,7 @@ use crate::error::box_error;
 use crate::frame::Framer;
 use crate::properties::TransportProperties;
 use crate::tokio::connection::Connection;
-use crate::tokio::error::{Error, NoEndpoint, Resolve};
+use crate::tokio::error::{Error, Resolve};
 use crate::Endpoint;
 use futures::stream::FuturesUnordered;
 use futures::{Future, FutureExt, StreamExt};
@@ -15,7 +15,7 @@ fn add_delay<F>(
     addr: SocketAddr,
     props: &TransportProperties,
     framer: F,
-) -> impl Future<Output = Result<Box<dyn crate::Connection<F, Error = Error>>, Error>> + '_
+) -> impl Future<Output = Result<Box<dyn crate::Connection<F, Error = Error> + Send>, Error>> + '_
 where
     F: Send + 'static + Framer,
     F::Input: ::std::marker::Send,
@@ -31,7 +31,7 @@ pub async fn race<E, F>(
     endpoint: E,
     props: TransportProperties,
     framer: F,
-) -> Result<Box<dyn crate::Connection<F, Error = Error>>, Error>
+) -> Result<Box<dyn crate::Connection<F, Error = Error> + Send>, Error>
 where
     E: Endpoint + Send,
     <E as Endpoint>::Error: 'static,
@@ -46,7 +46,12 @@ where
         .into_iter()
         .map(|addr| add_delay(addr, &props, framer.clone()))
         .collect::<FuturesUnordered<_>>()
-        .next()
+        .fold(Err(Error::NoEndpoint), |acc, res| {
+            ::futures::future::ready(if acc.is_ok() {
+                acc
+            } else {
+                res
+            })
+        })
         .await
-        .with_context(|| NoEndpoint)?
 }

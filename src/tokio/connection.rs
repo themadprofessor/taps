@@ -15,12 +15,14 @@ use tokio::net::{TcpStream, UdpSocket};
 const BUFFER_SIZE: usize = 1024;
 
 /// Tokio-based [Connection](../trait.Connection.html) implementation.
+#[derive(Debug)]
 pub struct Connection<F> {
     inner: TokioConnection,
     buffer: BytesMut,
     framer: F,
 }
 
+#[derive(Debug)]
 enum TokioConnection {
     TCP(TcpStream),
     UDP(UdpSocket),
@@ -70,7 +72,7 @@ where
         addr: SocketAddr,
         props: &TransportProperties,
         framer: F,
-    ) -> Result<Box<dyn crate::Connection<F, Error = Error>>, Error> {
+    ) -> Result<Box<dyn crate::Connection<F, Error = Error> + Send>, Error> {
         let rely: Preference = props.get(SelectionProperty::Reliability);
         let conn = match rely {
             Preference::Require => create_tcp(addr).await?,

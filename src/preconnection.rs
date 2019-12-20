@@ -24,7 +24,7 @@ pub trait Preconnection<L, R, F> {
 
     fn add_framer(&mut self, framer: F);
 
-    async fn initiate(self) -> Result<Box<dyn Connection<F, Error = Self::Error>>, Self::Error>
+    async fn initiate(self) -> Result<Box<dyn Connection<F, Error = Self::Error> + Send>, Self::Error>
     where
         R: Endpoint + Send,
         <R as Endpoint>::Error: 'static,
