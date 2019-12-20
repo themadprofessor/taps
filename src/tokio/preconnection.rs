@@ -5,6 +5,7 @@ use crate::tokio::error::Error;
 use crate::tokio::race;
 use crate::Connection;
 use async_trait::async_trait;
+use log::{info, debug};
 
 /// Tokio-based [Preconnection](../trait.Preconnection.html) implementation.
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -70,6 +71,7 @@ where
         let remote = self
             .remote
             .expect("cannot initiate a connection without a remote endpoint");
+        debug!("remote specifed");
         race::race(remote, self.props, self.framer.unwrap()).await
     }
 }

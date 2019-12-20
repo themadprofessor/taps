@@ -11,6 +11,7 @@ use crate::properties::{Preference, SelectionProperty, TransportProperties};
 use std::net::{Shutdown, SocketAddr};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpStream, UdpSocket};
+use log::{trace, debug};
 
 const BUFFER_SIZE: usize = 1024;
 
@@ -74,6 +75,7 @@ where
         framer: F,
     ) -> Result<Box<dyn crate::Connection<F, Error = Error> + Send>, Error> {
         let rely: Preference = props.get(SelectionProperty::Reliability);
+        trace!("reliability: {}", rely);
         let conn = match rely {
             Preference::Require => create_tcp(addr).await?,
             Preference::Prefer | Preference::Ignore => match create_tcp(addr).await {
@@ -108,6 +110,7 @@ where
         F::Input: Encode,
     {
         let length = data.size_hint();
+        trace!("data size hint: {:?}", length);
         let mut bytes = BytesMut::with_capacity(length.1.unwrap_or_else(|| length.0));
         self.framer
             .frame(data, &mut bytes)
@@ -121,7 +124,8 @@ where
         F::Output: Decode,
     {
         self.buffer.reserve(BUFFER_SIZE);
-        let _read = self.inner.recv(&mut self.buffer).await?;
+        let read = self.inner.recv(&mut self.buffer).await?;
+        trace!("bytes read: {}", read);
         self.framer
             .deframe(&mut self.buffer)
             .map(Option::unwrap)
@@ -130,20 +134,24 @@ where
     }
 
     async fn close(self: Box<Self>) -> Result<(), Self::Error> {
+        debug!("close connection");
         self.inner.close().await
     }
 
     fn abort(self: Box<Self>) {
+        debug!("abort connection");
         self.inner.abort()
     }
 }
 
 async fn create_tcp(addr: SocketAddr) -> Result<TokioConnection, Error> {
     let stream = TcpStream::connect(addr).await.with_context(|| Open)?;
+    trace!("opened tcp");
     Ok(TokioConnection::TCP(stream))
 }
 
 async fn create_udp(addr: SocketAddr) -> Result<TokioConnection, Error> {
     let socket = UdpSocket::bind(addr).await.with_context(|| Open)?;
+    trace!("opened udp");
     Ok(TokioConnection::UDP(socket))
 }

@@ -10,6 +10,7 @@ use snafu::{OptionExt, ResultExt};
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::time;
+use log::{debug, trace};
 
 fn add_delay<F>(
     addr: SocketAddr,
@@ -21,7 +22,10 @@ where
     F::Input: ::std::marker::Send,
 {
     match addr {
-        SocketAddr::V4(_) => time::delay_for(Duration::from_millis(5)),
+        SocketAddr::V4(_) => {
+            trace!("delaying v4");
+            time::delay_for(Duration::from_millis(5))
+        },
         SocketAddr::V6(_) => time::delay_for(Duration::from_millis(0)),
     }
     .then(move |_| Connection::create(addr, props, framer))
@@ -38,6 +42,7 @@ where
     F: Send + 'static + Framer + Clone,
     F::Input: ::std::marker::Send,
 {
+    debug!("racing");
     endpoint
         .resolve()
         .await

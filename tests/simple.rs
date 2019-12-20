@@ -8,6 +8,8 @@ use taps::{Endpoint, Preconnection};
 
 #[tokio::test]
 async fn simple_http() {
+    pretty_env_logger::try_init();
+
     let mut preconnection = ::taps::new_preconnection::<(), SocketAddr, Http<String>>(
         TransportProperties::default(),
     );
@@ -31,6 +33,7 @@ async fn simple_http() {
 
 #[tokio::test]
 async fn simple_http_dns() {
+    pretty_env_logger::try_init();
     let mut preconnection = ::taps::new_preconnection::<(), (&str, u16), Http<String>>(
         TransportProperties::default()
     );

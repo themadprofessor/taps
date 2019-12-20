@@ -11,6 +11,7 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use std::error::Error as StdError;
 use std::marker::PhantomData;
 use std::marker::Send as StdSend;
+use log::{debug, trace};
 
 /// Naive HTTP framer implementation. **NOT PRODUCTION SAFE**
 #[derive(Debug, Clone, Default)]
@@ -52,6 +53,9 @@ where
 
     fn encode(&self, data: &mut BytesMut) -> Result<(), Self::Error> {
         let req = self;
+        trace!("request method: {}", req.method());
+        trace!("request uri: {}", req.uri());
+        trace!("request version: {:?}", req.version());
         data.extend_from_slice(req.method().as_str().as_bytes());
         data.extend_from_slice(&[b' ']);
         data.extend_from_slice(
@@ -65,6 +69,8 @@ where
         data.extend_from_slice(version_to_string(req.version()).as_bytes());
         data.extend_from_slice(b"\r\n");
 
+        debug!("headers count: {}", req.headers().len());
+        trace!("http headers: {:?}", req.headers());
         for (header, value) in req.headers().iter() {
             data.extend_from_slice(header.as_ref());
             data.extend_from_slice(&[b':', b' ']);
@@ -72,6 +78,7 @@ where
             data.extend_from_slice(b"\r\n");
         }
         data.extend_from_slice(b"\r\n");
+        trace!("headers bytes: {}", data.len());
 
         req.body()
             .encode(data)
