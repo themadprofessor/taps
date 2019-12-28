@@ -29,6 +29,7 @@ pub enum Error {
 pub trait Endpoint {
     type Error: StdSend + StdError;
 
+    /// Attempt to resolve this endpoint into a collection of SockerAddrs.
     async fn resolve(self) -> Result<Vec<SocketAddr>, Self::Error>;
 }
 
