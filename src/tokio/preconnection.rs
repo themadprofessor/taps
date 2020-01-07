@@ -5,7 +5,7 @@ use crate::tokio::error::Error;
 use crate::tokio::race;
 use crate::Connection;
 use async_trait::async_trait;
-use log::{info, debug};
+use log::debug;
 
 /// Tokio-based [Preconnection](../trait.Preconnection.html) implementation.
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -62,7 +62,9 @@ where
         self.framer = Some(framer)
     }
 
-    async fn initiate(self) -> Result<Box<dyn Connection<F, Error = Self::Error> + Send>, Self::Error>
+    async fn initiate(
+        self,
+    ) -> Result<Box<dyn Connection<F, Error = Self::Error> + Send>, Self::Error>
     where
         R: Endpoint + Send,
         <R as Endpoint>::Error: 'static,

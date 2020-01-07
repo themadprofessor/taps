@@ -1,8 +1,8 @@
 use async_trait::async_trait;
+use snafu::{ResultExt, Snafu};
 use std::error::Error as StdError;
 use std::marker::Send as StdSend;
 use std::net::SocketAddr;
-use snafu::{Snafu, ResultExt};
 use tokio::task;
 
 #[derive(Debug, Snafu)]
@@ -11,14 +11,10 @@ pub enum Error {
     MissingEndpoint,
 
     #[snafu(display("io error: {}", source))]
-    Io {
-        source: ::std::io::Error
-    },
+    Io { source: ::std::io::Error },
 
     #[snafu(display("failed to join resolver task: {}", source))]
-    Join {
-        source: task::JoinError
-    }
+    Join { source: task::JoinError },
 }
 
 /// The `Endpoint` trait allows resolving a domain name into `SocketAddr`s.
@@ -68,7 +64,7 @@ where
             })
         })
         .await
-            .with_context(|| Join)?
-            .with_context(|| Io)
+        .with_context(|| Join)?
+        .with_context(|| Io)
     }
 }

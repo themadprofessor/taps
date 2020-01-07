@@ -6,6 +6,7 @@ mod connection;
 mod error;
 mod preconnection;
 mod race;
+mod listener;
 
 pub use connection::Connection;
 pub use preconnection::Preconnection;

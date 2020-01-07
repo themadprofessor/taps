@@ -6,11 +6,11 @@ use crate::tokio::error::{Error, Resolve};
 use crate::Endpoint;
 use futures::stream::FuturesUnordered;
 use futures::{Future, FutureExt, StreamExt};
-use snafu::{OptionExt, ResultExt};
+use log::{debug, trace};
+use snafu::ResultExt;
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::time;
-use log::{debug, trace};
 
 fn add_delay<F>(
     addr: SocketAddr,
@@ -25,7 +25,7 @@ where
         SocketAddr::V4(_) => {
             trace!("delaying v4");
             time::delay_for(Duration::from_millis(5))
-        },
+        }
         SocketAddr::V6(_) => time::delay_for(Duration::from_millis(0)),
     }
     .then(move |_| Connection::create(addr, props, framer))
@@ -52,11 +52,7 @@ where
         .map(|addr| add_delay(addr, &props, framer.clone()))
         .collect::<FuturesUnordered<_>>()
         .fold(Err(Error::NoEndpoint), |acc, res| {
-            ::futures::future::ready(if acc.is_ok() {
-                acc
-            } else {
-                res
-            })
+            ::futures::future::ready(if acc.is_ok() { acc } else { res })
         })
         .await
 }

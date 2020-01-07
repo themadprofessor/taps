@@ -8,10 +8,10 @@ use snafu::ResultExt;
 use crate::error::box_error;
 use crate::frame::Framer;
 use crate::properties::{Preference, SelectionProperty, TransportProperties};
+use log::{debug, trace};
 use std::net::{Shutdown, SocketAddr};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpStream, UdpSocket};
-use log::{trace, debug};
 
 const BUFFER_SIZE: usize = 1024;
 

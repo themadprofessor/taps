@@ -7,11 +7,11 @@ use bytes::{Buf, BytesMut};
 use http::header::HeaderName;
 use http::version::Version as HttpVersion;
 use http::{HeaderMap, HeaderValue, Request, Response};
+use log::{debug, trace};
 use snafu::{OptionExt, ResultExt, Snafu};
 use std::error::Error as StdError;
 use std::marker::PhantomData;
 use std::marker::Send as StdSend;
-use log::{debug, trace};
 
 /// Naive HTTP framer implementation. **NOT PRODUCTION SAFE**
 #[derive(Debug, Clone, Default)]
