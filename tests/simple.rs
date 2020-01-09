@@ -1,12 +1,13 @@
-use http::{HeaderValue, Request, Response, Version};
-use std::net::{SocketAddr, SocketAddrV4};
+// Allow unused results for logging init, otherwise tests could fail due to logging failure
+#![allow(unused_must_use)]
+use http::{HeaderValue, Request, Version};
+use std::net::SocketAddr;
 use std::str::FromStr;
 use taps::http::Http;
 use taps::properties::TransportProperties;
-use taps::{Connection, Framer};
-use taps::{Endpoint, Preconnection};
+use taps::Preconnection;
 
-#[tokio::test]
+#[tokio_macros::test]
 async fn simple_http() {
     pretty_env_logger::try_init();
 
@@ -30,7 +31,7 @@ async fn simple_http() {
     connection.close().await.unwrap();
 }
 
-#[tokio::test]
+#[tokio_macros::test]
 async fn simple_http_dns() {
     pretty_env_logger::try_init();
     let mut preconnection =

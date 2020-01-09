@@ -59,7 +59,6 @@ cargo doc --open
 
 The API relies heavily on [trait objects](https://doc.rust-lang.org/nightly/reference/types/trait-object.html?highlight=dyn#trait-objects) 
 This is to allow the underlying implementation of the TAPS API to change without applications having to rewrite any code.
-Only a recompilation would be required.
 
 
 ## Contributing

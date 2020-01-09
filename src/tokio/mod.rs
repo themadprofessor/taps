@@ -4,9 +4,9 @@
 
 mod connection;
 mod error;
+mod listener;
 mod preconnection;
 mod race;
-mod listener;
 
 pub use connection::Connection;
 pub use preconnection::Preconnection;

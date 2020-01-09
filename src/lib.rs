@@ -4,8 +4,8 @@
 pub use connection::Connection;
 pub use encode::*;
 pub use frame::Framer;
-pub use preconnection::Preconnection;
 pub use listener::Listener;
+pub use preconnection::Preconnection;
 pub use resolve::Endpoint;
 
 use crate::properties::TransportProperties;
@@ -50,7 +50,7 @@ pub mod prelude {
     pub use crate::connection::Connection;
     pub use crate::encode::*;
     pub use crate::frame::Framer;
+    pub use crate::listener::Listener;
     pub use crate::preconnection::Preconnection;
     pub use crate::resolve::Endpoint;
-    pub use crate::listener::Listener;
 }

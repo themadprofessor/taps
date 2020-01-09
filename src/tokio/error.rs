@@ -31,4 +31,7 @@ pub enum Error {
 
     #[snafu(display("failed to deframe message: {}", source))]
     Deframe { source: Box<dyn StdError + StdSend> },
+
+    #[snafu(display("failed to listen for connections: {}", source))]
+    Listen { source: tokio::io::Error },
 }

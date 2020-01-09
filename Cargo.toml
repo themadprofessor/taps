@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio = { version = "0.2", features = ["full"] }
+tokio = { version = "0.2", features = ["tcp", "udp", "blocking", "io-util", "time", "stream"] }
 tokio-util = { version = "0.2" }
 snafu = { version = "0.6", features = ["futures"] }
 lazy_static = "1.4"
@@ -22,3 +22,4 @@ log = "0.4"
 
 [dev-dependencies]
 pretty_env_logger = "0.3"
+tokio-macros = "0.2"

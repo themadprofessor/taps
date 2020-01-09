@@ -24,7 +24,7 @@ pub struct Connection<F> {
 }
 
 #[derive(Debug)]
-enum TokioConnection {
+pub(crate) enum TokioConnection {
     TCP(TcpStream),
     UDP(UdpSocket),
 }
@@ -69,7 +69,7 @@ where
     F: Framer + 'static + ::std::marker::Send,
     F::Input: ::std::marker::Send,
 {
-    pub async fn create(
+    pub(crate) async fn create(
         addr: SocketAddr,
         props: &TransportProperties,
         framer: F,
@@ -94,6 +94,20 @@ where
             buffer: BytesMut::new(),
             framer,
         }))
+    }
+
+    pub(crate) fn from_existing<S>(
+        inner: S,
+        framer: F,
+    ) -> Box<dyn crate::Connection<F, Error = Error> + Send>
+    where
+        S: Into<TokioConnection>,
+    {
+        Box::new(Connection::<F> {
+            inner: inner.into(),
+            buffer: BytesMut::new(),
+            framer,
+        })
     }
 }
 
@@ -154,4 +168,16 @@ async fn create_udp(addr: SocketAddr) -> Result<TokioConnection, Error> {
     let socket = UdpSocket::bind(addr).await.with_context(|| Open)?;
     trace!("opened udp");
     Ok(TokioConnection::UDP(socket))
+}
+
+impl From<TcpStream> for TokioConnection {
+    fn from(s: TcpStream) -> Self {
+        TokioConnection::TCP(s)
+    }
+}
+
+impl From<UdpSocket> for TokioConnection {
+    fn from(s: UdpSocket) -> Self {
+        TokioConnection::UDP(s)
+    }
 }
