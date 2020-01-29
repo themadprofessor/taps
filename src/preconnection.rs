@@ -1,41 +1,110 @@
 use crate::connection::Connection;
+use crate::error::Error;
 use crate::frame::Framer;
 use crate::properties::TransportProperties;
 use crate::resolve::Endpoint;
-use async_trait::async_trait;
-use std::error::Error as StdError;
-use std::marker::Send as StdSend;
+use std::marker::PhantomData;
 
-#[async_trait]
-pub trait Preconnection<L, R, F> {
-    type Error: StdSend + StdError;
+/// A marker trait to specify types which represent the state of a
+/// [Preconnection's](struct.Preconnection.html) endpoints.
+pub trait EndpointState {}
 
-    /// Specify the local endpoint for this preconnection.
-    fn local_endpoint(&mut self, local: L)
+/// Type used to represent a missing endpoint for a [Preconnection](struct.Preconnection.html).
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub struct NoEndpoint;
+
+/// A configuration type used to configure how to create a Connection and/or Listener.
+///
+/// # Generic Types
+/// - F: The framer which the resulting Connection(s) will use to frame and deframe data
+/// - L: The type of the local endpoint. It is [NoEndpoint](struct.NoEndpoint.html) if no local
+/// endpoint is given
+/// - R: The type of the remote endpoint. It is [NoEndpoint](struct.NoEndpoint.html) if no remote
+/// endpoint is given
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct Preconnection<F, L, R>
+where
+    F: Framer + Send + 'static,
+    L: EndpointState,
+    R: EndpointState,
+{
+    local: L,
+    remote: R,
+    framer: F,
+    trans: TransportProperties,
+}
+
+impl EndpointState for NoEndpoint {}
+impl<T> EndpointState for T where T: Endpoint {}
+
+impl<F> Preconnection<F, NoEndpoint, NoEndpoint>
+where
+    F: Framer + Send + 'static,
+{
+    /// Create a new Preconnection which has no endpoints specified.
+    pub fn new(props: TransportProperties, framer: F) -> Self {
+        Preconnection {
+            local: NoEndpoint,
+            remote: NoEndpoint,
+            trans: props,
+            framer,
+        }
+    }
+}
+
+impl<F, L, R> Preconnection<F, L, R>
+where
+    L: EndpointState,
+    R: EndpointState,
+    F: Framer + Send + 'static,
+{
+    /// Specify the local endpoint which will be used when creating a Connection from this
+    /// [Preconnection](struct.Preconnection.html).
+    pub fn local_endpoint<'a, N>(self, local: N) -> Preconnection<F, N, R>
     where
-        L: Endpoint;
+        N: Endpoint,
+    {
+        Preconnection {
+            local,
+            remote: self.remote,
+            trans: self.trans_props,
+            framer: self.framer,
+        }
+    }
 
-    /// Specify the remote endpoint for this preconnection.
-    fn remote_endpoint(&mut self, remote: R)
+    /// Specify the remote endpoint which will be used when creating a Connection from this
+    /// [Preconnection](struct.Preconnection.html).
+    ///
+    /// No name resolution is done by this method. See resolve for eager resolution or initiate for
+    /// late resolution.
+    pub fn remote_endpoint<'a, N>(self, remote: N) -> Preconnection<F, L, N>
     where
-        R: Endpoint;
+        N: Endpoint,
+    {
+        Preconnection {
+            local: self.local,
+            remote,
+            trans: self.trans_props,
+            framer: self.framer,
+        }
+    }
 
-    /// Get this preconnection's transport properties.
-    fn transport_properties(&self) -> &TransportProperties;
+    pub fn transport_properties(&self) -> &TransportProperties {
+        &self.trans
+    }
 
-    /// Get a mutable reference to this preconnection's transport properties.
-    fn transport_properties_mut(&mut self) -> &mut TransportProperties;
+    pub fn transport_properties_mut(&mut self) -> &mut TransportProperties {
+        &mut self.trans
+    }
+}
 
-    /// Add a framer to this preconnection.
-    fn add_framer(&mut self, framer: F);
-
-    /// Attempt to initiate a connection from this preconnection.
-    async fn initiate(
-        self,
-    ) -> Result<Box<dyn Connection<F, Error = Self::Error> + Send>, Self::Error>
-    where
-        R: Endpoint + Send,
-        <R as Endpoint>::Error: 'static,
-        F: Framer + Send,
-        F::Input: ::std::marker::Send;
+impl<F, L, R> Preconnection<F, L, R>
+where
+    L: EndpointState,
+    R: Endpoint,
+    F: Framer + Send + 'static,
+{
+    pub async fn initiate(self) -> Result<Box<dyn Connection<F, Error = Error>>, Error> {
+        unimplemented!()
+    }
 }

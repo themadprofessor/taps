@@ -27,14 +27,13 @@ where
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match self.as_mut().inner.incoming().poll_next_unpin(cx) {
             Poll::Pending => Poll::Pending,
-            Poll::Ready(op) => {
-                Poll::Ready(match op {
-                    None => None,
-                    Some(res) => Some(res.with_context(|| Listen).map(|raw| {
-                        TokioConnection::from_existing(raw, self.framer.clone())
-                    })),
-                })
-            }
+            Poll::Ready(op) => Poll::Ready(match op {
+                None => None,
+                Some(res) => Some(
+                    res.with_context(|| Listen)
+                        .map(|raw| TokioConnection::from_existing(raw, self.framer.clone())),
+                ),
+            }),
         }
     }
 }

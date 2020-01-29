@@ -10,3 +10,5 @@ mod race;
 
 pub use connection::Connection;
 pub use preconnection::Preconnection;
+
+pub struct Tokio;
