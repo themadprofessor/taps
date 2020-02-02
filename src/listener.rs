@@ -1,17 +1,11 @@
+use crate::error::Error;
 use crate::{Connection, Framer};
 use futures::Stream;
-use crate::error::Error;
 
 // The stream's item is a possible connection with the same framer and error types as this listener
-pub trait Listener<F>:
-    Stream<
-    Item = Result<
-        Box<dyn Connection<F>>,
-        Error,
-    >,
->
+pub trait Listener<F>: Stream<Item = Result<Box<dyn Connection<F>>, Error>>
 where
-    F: Framer
+    F: Framer,
 {
     fn connection_limit(&mut self, limit: usize);
 }

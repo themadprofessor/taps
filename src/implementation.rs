@@ -11,18 +11,17 @@ pub trait Impl {
         remote: R,
     ) -> Result<Box<dyn Connection<F>>, Error>
     where
-        F: Framer + Send + 'static,
+        F: Framer,
         L: Endpoint,
         R: Endpoint;
 
-    async fn listener<F, L, R, S>(
+    async fn listener<F, L, R>(
         framer: F,
         local: L,
         remote: Option<R>,
-    ) -> Result<Box<dyn Listener<F, Item = S>>, Error>
+    ) -> Result<Box<dyn Listener<F, Item = Result<Box<dyn Connection<F>>, Error>>>, Error>
     where
-        F: Framer + Send + 'static,
+        F: Framer,
         L: Endpoint,
-        R: Endpoint,
-        S: Stream<Item = Box<dyn Connection<F>>>;
+        R: Endpoint;
 }

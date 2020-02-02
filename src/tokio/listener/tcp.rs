@@ -1,3 +1,4 @@
+use crate::error::box_error;
 use crate::tokio::error::Listen;
 use crate::tokio::Connection as TokioConnection;
 use crate::{Connection, Framer};
@@ -7,7 +8,6 @@ use snafu::ResultExt;
 use std::marker::Unpin;
 use std::pin::Pin;
 use tokio::net::TcpListener;
-use crate::error::box_error;
 
 pub struct Listener<F> {
     limit: Option<usize>,
@@ -20,10 +20,7 @@ where
     F: Framer + Send + 'static + Clone + Unpin,
     F::Input: Send,
 {
-    type Item = Result<
-        Box<dyn Connection<F>>,
-        crate::error::Error,
-    >;
+    type Item = Result<Box<dyn Connection<F>>, crate::error::Error>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match self.as_mut().inner.incoming().poll_next_unpin(cx) {

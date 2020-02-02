@@ -10,7 +10,7 @@ mod race;
 
 use crate::error::Error;
 use crate::implementation::Impl;
-use crate::{Listener, Framer, Endpoint};
+use crate::{Endpoint, Framer, Listener};
 pub use connection::Connection;
 pub use preconnection::Preconnection;
 
@@ -34,16 +34,15 @@ impl Impl for Tokio {
         unimplemented!()
     }
 
-    async fn listener<F, L, R, S>(
+    async fn listener<F, L, R>(
         framer: F,
         local: L,
         remote: Option<R>,
-    ) -> Result<Box<dyn Listener<F, Item = S>>, Error>
+    ) -> Result<Box<dyn Listener<F, Item = Result<Box<dyn crate::Connection<F>>, Error>>>, Error>
     where
         F: Framer + Send + 'static,
         L: Endpoint,
         R: Endpoint,
-        S: Stream<Item = Box<dyn crate::Connection<F>>>,
     {
         unimplemented!()
     }

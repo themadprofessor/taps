@@ -26,13 +26,12 @@ impl<L, R, F> Preconnection<L, R, F> {
     }
 }
 
-impl <L, R, F> Preconnection<L, R, F>
+impl<L, R, F> Preconnection<L, R, F>
 where
     L: Send,
     R: Send,
     F: Send + Sync + 'static + Framer + Clone,
 {
-
     fn local_endpoint(&mut self, local: L)
     where
         L: Endpoint,
@@ -59,9 +58,7 @@ where
         self.framer = Some(framer)
     }
 
-    async fn initiate(
-        self,
-    ) -> Result<Box<dyn Connection<F>>, Error>
+    async fn initiate(self) -> Result<Box<dyn Connection<F>>, Error>
     where
         R: Endpoint + Send,
         <R as Endpoint>::Error: 'static,

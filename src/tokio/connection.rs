@@ -140,7 +140,10 @@ where
         F::Output: Decode,
     {
         self.buffer.reserve(BUFFER_SIZE);
-        let read = self.inner.recv(&mut self.buffer).await
+        let read = self
+            .inner
+            .recv(&mut self.buffer)
+            .await
             .map_err(box_error)
             .with_context(|| crate::error::Receive)?;
         trace!("bytes read: {}", read);
