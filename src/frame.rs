@@ -2,7 +2,7 @@ use bytes::BytesMut;
 use std::error::Error as StdError;
 use std::marker::Send as StdSend;
 
-pub trait Framer {
+pub trait Framer: Send + 'static {
     type Input;
     type Output;
     type MetaKey;

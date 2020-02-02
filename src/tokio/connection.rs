@@ -6,6 +6,7 @@ use bytes::BytesMut;
 use snafu::ResultExt;
 
 use crate::error::box_error;
+use crate::error::Error as TapsError;
 use crate::frame::Framer;
 use crate::properties::{Preference, SelectionProperty, TransportProperties};
 use log::{debug, trace};
@@ -73,7 +74,7 @@ where
         addr: SocketAddr,
         props: &TransportProperties,
         framer: F,
-    ) -> Result<Box<dyn crate::Connection<F, Error = Error> + Send>, Error> {
+    ) -> Result<Box<dyn crate::Connection<F>>, Error> {
         let rely: Preference = props.get(SelectionProperty::Reliability);
         trace!("reliability: {}", rely);
         let conn = match rely {
@@ -96,10 +97,7 @@ where
         }))
     }
 
-    pub(crate) fn from_existing<S>(
-        inner: S,
-        framer: F,
-    ) -> Box<dyn crate::Connection<F, Error = Error> + Send>
+    pub(crate) fn from_existing<S>(inner: S, framer: F) -> Box<dyn crate::Connection<F>>
     where
         S: Into<TokioConnection>,
     {
@@ -117,9 +115,7 @@ where
     F: Framer + ::std::marker::Send + 'static,
     F::Input: ::std::marker::Send,
 {
-    type Error = Error;
-
-    async fn send(&mut self, data: F::Input) -> Result<(), Self::Error>
+    async fn send(&mut self, data: F::Input) -> Result<(), TapsError>
     where
         F::Input: Encode,
     {
@@ -129,27 +125,41 @@ where
         self.framer
             .frame(data, &mut bytes)
             .map_err(box_error)
-            .with_context(|| Frame)?;
-        self.inner.send(&mut bytes).await
+            .with_context(|| Frame)
+            .map_err(box_error)
+            .with_context(|| crate::error::Send)?;
+        self.inner
+            .send(&mut bytes)
+            .await
+            .map_err(box_error)
+            .with_context(|| crate::error::Send)
     }
 
-    async fn receive(&mut self) -> Result<F::Output, Self::Error>
+    async fn receive(&mut self) -> Result<F::Output, TapsError>
     where
         F::Output: Decode,
     {
         self.buffer.reserve(BUFFER_SIZE);
-        let read = self.inner.recv(&mut self.buffer).await?;
+        let read = self.inner.recv(&mut self.buffer).await
+            .map_err(box_error)
+            .with_context(|| crate::error::Receive)?;
         trace!("bytes read: {}", read);
         self.framer
             .deframe(&mut self.buffer)
             .map(Option::unwrap)
             .map_err(box_error)
             .with_context(|| Deframe)
+            .map_err(box_error)
+            .with_context(|| crate::error::Receive)
     }
 
-    async fn close(self: Box<Self>) -> Result<(), Self::Error> {
+    async fn close(self: Box<Self>) -> Result<(), TapsError> {
         debug!("close connection");
-        self.inner.close().await
+        self.inner
+            .close()
+            .await
+            .map_err(box_error)
+            .with_context(|| crate::error::Connection)
     }
 
     fn abort(self: Box<Self>) {

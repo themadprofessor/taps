@@ -9,7 +9,7 @@ pub trait Impl {
         framer: F,
         local: Option<L>,
         remote: R,
-    ) -> Result<Box<dyn Connection<F, Error = Error>>, Error>
+    ) -> Result<Box<dyn Connection<F>>, Error>
     where
         F: Framer + Send + 'static,
         L: Endpoint,
@@ -19,10 +19,10 @@ pub trait Impl {
         framer: F,
         local: L,
         remote: Option<R>,
-    ) -> Result<Box<dyn Listener<F, Error = Error, Item=S>>, Error>
+    ) -> Result<Box<dyn Listener<F, Item = S>>, Error>
     where
         F: Framer + Send + 'static,
         L: Endpoint,
         R: Endpoint,
-        S: Stream<Item = Box<dyn Connection<F, Error = Error>>>;
+        S: Stream<Item = Box<dyn Connection<F>>>;
 }

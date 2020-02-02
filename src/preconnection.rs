@@ -3,7 +3,6 @@ use crate::error::Error;
 use crate::frame::Framer;
 use crate::properties::TransportProperties;
 use crate::resolve::Endpoint;
-use std::marker::PhantomData;
 
 /// A marker trait to specify types which represent the state of a
 /// [Preconnection's](struct.Preconnection.html) endpoints.
@@ -21,7 +20,7 @@ pub struct NoEndpoint;
 /// endpoint is given
 /// - R: The type of the remote endpoint. It is [NoEndpoint](struct.NoEndpoint.html) if no remote
 /// endpoint is given
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Preconnection<F, L, R>
 where
     F: Framer + Send + 'static,
@@ -60,14 +59,14 @@ where
 {
     /// Specify the local endpoint which will be used when creating a Connection from this
     /// [Preconnection](struct.Preconnection.html).
-    pub fn local_endpoint<'a, N>(self, local: N) -> Preconnection<F, N, R>
+    pub fn local_endpoint<N>(self, local: N) -> Preconnection<F, N, R>
     where
         N: Endpoint,
     {
         Preconnection {
             local,
             remote: self.remote,
-            trans: self.trans_props,
+            trans: self.trans,
             framer: self.framer,
         }
     }
@@ -77,14 +76,14 @@ where
     ///
     /// No name resolution is done by this method. See resolve for eager resolution or initiate for
     /// late resolution.
-    pub fn remote_endpoint<'a, N>(self, remote: N) -> Preconnection<F, L, N>
+    pub fn remote_endpoint<N>(self, remote: N) -> Preconnection<F, L, N>
     where
         N: Endpoint,
     {
         Preconnection {
             local: self.local,
             remote,
-            trans: self.trans_props,
+            trans: self.trans,
             framer: self.framer,
         }
     }
@@ -104,7 +103,7 @@ where
     R: Endpoint,
     F: Framer + Send + 'static,
 {
-    pub async fn initiate(self) -> Result<Box<dyn Connection<F, Error = Error>>, Error> {
+    pub async fn initiate(self) -> Result<Box<dyn Connection<F>>, Error> {
         unimplemented!()
     }
 }

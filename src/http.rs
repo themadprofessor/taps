@@ -145,7 +145,7 @@ where
 
 impl<T> Framer for Http<T>
 where
-    T: Encode + Decode,
+    T: Encode + Decode + Send + 'static,
     <T as Encode>::Error: 'static,
     <T as Decode>::Error: 'static,
 {

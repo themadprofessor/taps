@@ -7,6 +7,7 @@ use snafu::ResultExt;
 use std::marker::Unpin;
 use std::pin::Pin;
 use tokio::net::TcpListener;
+use crate::error::box_error;
 
 pub struct Listener<F> {
     limit: Option<usize>,
@@ -20,8 +21,8 @@ where
     F::Input: Send,
 {
     type Item = Result<
-        Box<dyn Connection<F, Error = crate::tokio::error::Error> + Send>,
-        crate::tokio::error::Error,
+        Box<dyn Connection<F>>,
+        crate::error::Error,
     >;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -31,7 +32,9 @@ where
                 None => None,
                 Some(res) => Some(
                     res.with_context(|| Listen)
-                        .map(|raw| TokioConnection::from_existing(raw, self.framer.clone())),
+                        .map(|raw| TokioConnection::from_existing(raw, self.framer.clone()))
+                        .map_err(box_error)
+                        .with_context(|| crate::error::Listen),
                 ),
             }),
         }
@@ -40,11 +43,9 @@ where
 
 impl<F> crate::Listener<F> for Listener<F>
 where
-    F: Framer + Send + 'static + Clone + Unpin,
+    F: Framer + Clone + Unpin,
     F::Input: Send,
 {
-    type Error = crate::tokio::error::Error;
-
     fn connection_limit(&mut self, limit: usize) {
         self.limit = Some(limit);
     }

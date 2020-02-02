@@ -8,7 +8,43 @@ mod listener;
 mod preconnection;
 mod race;
 
+use crate::error::Error;
+use crate::implementation::Impl;
+use crate::{Listener, Framer, Endpoint};
 pub use connection::Connection;
 pub use preconnection::Preconnection;
 
+use async_trait::async_trait;
+use futures::Stream;
+
 pub struct Tokio;
+
+#[async_trait]
+impl Impl for Tokio {
+    async fn connection<F, L, R>(
+        framer: F,
+        local: Option<L>,
+        remote: R,
+    ) -> Result<Box<dyn crate::Connection<F>>, Error>
+    where
+        F: Framer + Send + 'static,
+        L: Endpoint,
+        R: Endpoint,
+    {
+        unimplemented!()
+    }
+
+    async fn listener<F, L, R, S>(
+        framer: F,
+        local: L,
+        remote: Option<R>,
+    ) -> Result<Box<dyn Listener<F, Item = S>>, Error>
+    where
+        F: Framer + Send + 'static,
+        L: Endpoint,
+        R: Endpoint,
+        S: Stream<Item = Box<dyn crate::Connection<F>>>,
+    {
+        unimplemented!()
+    }
+}

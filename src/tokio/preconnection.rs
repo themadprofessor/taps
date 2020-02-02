@@ -4,7 +4,6 @@ use crate::resolve::Endpoint;
 use crate::tokio::error::Error;
 use crate::tokio::race;
 use crate::Connection;
-use async_trait::async_trait;
 use log::debug;
 
 /// Tokio-based [Preconnection](../trait.Preconnection.html) implementation.
@@ -27,14 +26,12 @@ impl<L, R, F> Preconnection<L, R, F> {
     }
 }
 
-#[async_trait]
-impl<L, R, F> crate::Preconnection<L, R, F> for Preconnection<L, R, F>
+impl <L, R, F> Preconnection<L, R, F>
 where
     L: Send,
     R: Send,
     F: Send + Sync + 'static + Framer + Clone,
 {
-    type Error = Error;
 
     fn local_endpoint(&mut self, local: L)
     where
@@ -64,7 +61,7 @@ where
 
     async fn initiate(
         self,
-    ) -> Result<Box<dyn Connection<F, Error = Self::Error> + Send>, Self::Error>
+    ) -> Result<Box<dyn Connection<F>>, Error>
     where
         R: Endpoint + Send,
         <R as Endpoint>::Error: 'static,
