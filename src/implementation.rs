@@ -1,7 +1,7 @@
 use crate::error::Error;
 use crate::{Connection, Endpoint, Framer, Listener};
 use async_trait::async_trait;
-use futures::Stream;
+use crate::properties::TransportProperties;
 
 #[async_trait]
 pub trait Impl {
@@ -9,9 +9,10 @@ pub trait Impl {
         framer: F,
         local: Option<L>,
         remote: R,
+        props: &TransportProperties
     ) -> Result<Box<dyn Connection<F>>, Error>
     where
-        F: Framer,
+        F: Framer + Clone,
         L: Endpoint,
         R: Endpoint;
 
@@ -19,6 +20,7 @@ pub trait Impl {
         framer: F,
         local: L,
         remote: Option<R>,
+        props: &TransportProperties
     ) -> Result<Box<dyn Listener<F, Item = Result<Box<dyn Connection<F>>, Error>>>, Error>
     where
         F: Framer,

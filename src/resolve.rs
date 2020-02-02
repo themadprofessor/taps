@@ -22,7 +22,7 @@ pub enum Error {
 /// This trait does not have a blanket impl for `ToSocketAddr`, because that trait only resolves
 /// into a single `SocketAddr`.
 #[async_trait]
-pub trait Endpoint: Send {
+pub trait Endpoint: Send + 'static {
     type Error: StdSend + StdError;
 
     /// Attempt to resolve this endpoint into a collection of SockerAddrs.

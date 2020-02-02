@@ -18,8 +18,7 @@ fn add_delay<F>(
     framer: F,
 ) -> impl Future<Output = Result<Box<dyn crate::Connection<F>>, Error>> + '_
 where
-    F: Send + 'static + Framer,
-    F::Input: ::std::marker::Send,
+    F: Framer,
 {
     match addr {
         SocketAddr::V4(_) => {
@@ -33,14 +32,13 @@ where
 
 pub async fn race<E, F>(
     endpoint: E,
-    props: TransportProperties,
+    props: &TransportProperties,
     framer: F,
 ) -> Result<Box<dyn crate::Connection<F>>, Error>
 where
-    E: Endpoint + Send,
+    E: Endpoint,
     <E as Endpoint>::Error: 'static,
-    F: Send + 'static + Framer + Clone,
-    F::Input: ::std::marker::Send,
+    F: Framer + Clone,
 {
     debug!("racing");
     endpoint
