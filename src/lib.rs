@@ -19,7 +19,7 @@ mod preconnection;
 pub mod properties;
 mod resolve;
 
-#[cfg(feature = "tokio")]
+#[cfg(feature = "tokio-impl")]
 pub mod tokio;
 
 /// TAPS prelude, intended for glob imports.

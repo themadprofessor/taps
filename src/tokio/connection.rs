@@ -67,7 +67,7 @@ impl TokioConnection {
 
 impl<F> Connection<F>
 where
-    F: Framer
+    F: Framer,
 {
     pub(crate) async fn create(
         addr: SocketAddr,
@@ -111,7 +111,7 @@ where
 #[async_trait]
 impl<F> crate::Connection<F> for Connection<F>
 where
-    F: Framer
+    F: Framer,
 {
     async fn send(&mut self, data: F::Input) -> Result<(), TapsError>
     where

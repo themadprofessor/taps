@@ -11,11 +11,9 @@ use taps::Preconnection;
 async fn simple_http() {
     pretty_env_logger::try_init();
 
-    let mut preconnection =
-        ::taps::new_preconnection::<(), SocketAddr, Http<String>>(TransportProperties::default());
-
-    preconnection.remote_endpoint(SocketAddr::from_str("1.1.1.1:80").unwrap());
-    preconnection.add_framer(Http::default());
+    let preconnection =
+        Preconnection::new(TransportProperties::default(), Http::<String>::default())
+            .remote_endpoint(SocketAddr::from_str("1.1.1.1:80").unwrap());
 
     let mut connection = preconnection.initiate().await.unwrap();
     let mut request = Request::new("".to_string());
@@ -34,11 +32,10 @@ async fn simple_http() {
 #[tokio_macros::test]
 async fn simple_http_dns() {
     pretty_env_logger::try_init();
-    let mut preconnection =
-        ::taps::new_preconnection::<(), (&str, u16), Http<String>>(TransportProperties::default());
 
-    preconnection.remote_endpoint(("example.com", 80));
-    preconnection.add_framer(Http::default());
+    let preconnection =
+        Preconnection::new(TransportProperties::default(), Http::<String>::default())
+            .remote_endpoint(("example.com", 80));
 
     let mut connection = preconnection.initiate().await.unwrap();
     let mut request = Request::new("".to_string());

@@ -6,7 +6,7 @@ use async_trait::async_trait;
 #[async_trait]
 pub trait Connection<F>: Send
 where
-    F: Framer
+    F: Framer,
 {
     /// Send data over this connection.
     async fn send(&mut self, data: F::Input) -> Result<(), Error>

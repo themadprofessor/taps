@@ -7,14 +7,13 @@ mod error;
 mod listener;
 mod race;
 
-use crate::error::{Error, box_error};
+use crate::error::{box_error, Error};
 use crate::implementation::Impl;
 use crate::{Endpoint, Framer, Listener};
 pub use connection::Connection;
 
-use async_trait::async_trait;
-use futures::Stream;
 use crate::properties::TransportProperties;
+use async_trait::async_trait;
 use snafu::ResultExt;
 
 pub struct Tokio;
@@ -25,14 +24,15 @@ impl Impl for Tokio {
         framer: F,
         _local: Option<L>,
         remote: R,
-        props: &TransportProperties
+        props: &TransportProperties,
     ) -> Result<Box<dyn crate::Connection<F>>, Error>
     where
         F: Framer + Clone,
         L: Endpoint,
         R: Endpoint,
     {
-        race::race(remote, props, framer).await
+        race::race(remote, props, framer)
+            .await
             .map_err(box_error)
             .with_context(|| crate::error::Initiate)
     }
@@ -41,7 +41,7 @@ impl Impl for Tokio {
         framer: F,
         local: L,
         remote: Option<R>,
-        props: &TransportProperties
+        props: &TransportProperties,
     ) -> Result<Box<dyn Listener<F, Item = Result<Box<dyn crate::Connection<F>>, Error>>>, Error>
     where
         F: Framer + Send + 'static,
