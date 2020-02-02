@@ -5,10 +5,13 @@ authors = ["stuart <stu@reilly-family.co.uk>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["tokio-impl"]
+tokio-impl = ["tokio", "tokio-util"]
 
 [dependencies]
-tokio = { version = "0.2", features = ["tcp", "udp", "blocking", "io-util", "time", "stream"] }
-tokio-util = { version = "0.2" }
+tokio = { version = "0.2", features = ["tcp", "udp", "blocking", "io-util", "time", "stream"], optional=true }
+tokio-util = { version = "0.2", optional=true }
 snafu = { version = "0.6", features = ["futures"] }
 lazy_static = "1.4"
 enum-map = "0.6"

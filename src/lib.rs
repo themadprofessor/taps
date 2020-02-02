@@ -18,6 +18,8 @@ mod listener;
 mod preconnection;
 pub mod properties;
 mod resolve;
+
+#[cfg(feature = "tokio")]
 pub mod tokio;
 
 /// TAPS prelude, intended for glob imports.

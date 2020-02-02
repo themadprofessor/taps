@@ -23,7 +23,7 @@ pub struct Tokio;
 impl Impl for Tokio {
     async fn connection<F, L, R>(
         framer: F,
-        local: Option<L>,
+        _local: Option<L>,
         remote: R,
         props: &TransportProperties
     ) -> Result<Box<dyn crate::Connection<F>>, Error>
