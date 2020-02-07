@@ -8,16 +8,19 @@ use snafu::ResultExt;
 use std::marker::Unpin;
 use std::pin::Pin;
 use tokio::net::TcpListener;
+use std::net::SocketAddr;
 
 pub struct Listener<F> {
     limit: Option<usize>,
     framer: F,
     inner: TcpListener,
+    local: SocketAddr,
+    remote: SocketAddr
 }
 
 impl<F> Stream for Listener<F>
 where
-    F: Framer + Send + 'static + Clone + Unpin,
+    F: Framer + Clone + Unpin,
     F::Input: Send,
 {
     type Item = Result<Box<dyn Connection<F>>, crate::error::Error>;
@@ -29,7 +32,10 @@ where
                 None => None,
                 Some(res) => Some(
                     res.with_context(|| Listen)
-                        .map(|raw| TokioConnection::from_existing(raw, self.framer.clone()))
+                        .and_then(|raw| {
+                            let remote = raw.peer_addr().with_context(|| Listen)?;
+                            TokioConnection::from_existing(raw, self.framer.clone(), remote)
+                        })
                         .map_err(box_error)
                         .with_context(|| crate::error::Listen),
                 ),
@@ -45,5 +51,13 @@ where
 {
     fn connection_limit(&mut self, limit: usize) {
         self.limit = Some(limit);
+    }
+
+    fn local_endpoint(&self) -> SocketAddr {
+        self.local
+    }
+
+    fn remote_endpoint(&self) -> SocketAddr {
+        self.remote
     }
 }

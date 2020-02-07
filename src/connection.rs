@@ -2,6 +2,7 @@ use crate::error::Error;
 use crate::frame::Framer;
 use crate::{Decode, Encode};
 use async_trait::async_trait;
+use std::net::SocketAddr;
 
 #[async_trait]
 pub trait Connection<F>: Send
@@ -23,4 +24,8 @@ where
 
     /// Abort this connection ungracefully.
     fn abort(self: Box<Self>);
+
+    fn remote_endpoint(&self) -> SocketAddr;
+
+    fn local_endpoint(&self) -> SocketAddr;
 }

@@ -1,7 +1,7 @@
 use crate::connection::Connection;
 use crate::error::{box_error, Error};
 use crate::frame::Framer;
-use crate::implementation::Impl;
+use crate::implementation::Implementation;
 use crate::properties::TransportProperties;
 use crate::resolve::Endpoint;
 use crate::Listener;
@@ -36,7 +36,7 @@ where
     F: Framer,
     L: EndpointState,
     R: EndpointState,
-    I: Impl,
+    I: Implementation,
 {
     local: L,
     remote: R,
@@ -67,7 +67,7 @@ where
 impl<F, I> Preconnection<F, NoEndpoint, NoEndpoint, I>
 where
     F: Framer,
-    I: Impl,
+    I: Implementation,
 {
     pub fn with_impl(props: TransportProperties, framer: F) -> Self {
         Preconnection {
@@ -85,7 +85,7 @@ where
     L: EndpointState,
     R: EndpointState,
     F: Framer,
-    I: Impl,
+    I: Implementation,
 {
     /// Specify the local endpoint which will be used when creating a Connection from this
     /// [Preconnection](struct.Preconnection.html).
@@ -132,7 +132,7 @@ impl<F, R, I> Preconnection<F, NoEndpoint, R, I>
 where
     R: Endpoint,
     F: Framer + Clone,
-    I: Impl,
+    I: Implementation,
 {
     pub async fn initiate(self) -> Result<Box<dyn Connection<F>>, Error> {
         I::connection(self.framer, Option::<()>::None, self.remote, &self.trans)
@@ -146,7 +146,7 @@ impl<F, L, I> Preconnection<F, L, NoEndpoint, I>
 where
     L: Endpoint,
     F: Framer,
-    I: Impl,
+    I: Implementation,
 {
     pub async fn listen(self) -> Result<Box<dyn Listener<F>>, Error> {
         I::listener(self.framer, self.local, Option::<()>::None, &self.trans)
@@ -161,7 +161,7 @@ where
     L: Endpoint,
     R: Endpoint,
     F: Framer,
-    I: Impl,
+    I: Implementation,
 {
     pub async fn listen(self) -> Result<Box<dyn Listener<F>>, Error> {
         I::listener(self.framer, self.local, Some(self.remote), &self.trans)
@@ -176,7 +176,7 @@ where
     L: Endpoint,
     R: Endpoint,
     F: Framer + Clone,
-    I: Impl,
+    I: Implementation,
 {
     pub async fn initiate(self) -> Result<Box<dyn Connection<F>>, Error> {
         I::connection(self.framer, Some(self.local), self.remote, &self.trans)

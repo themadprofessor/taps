@@ -4,7 +4,7 @@ use crate::{Connection, Endpoint, Framer, Listener};
 use async_trait::async_trait;
 
 #[async_trait]
-pub trait Impl {
+pub trait Implementation {
     async fn connection<F, L, R>(
         framer: F,
         local: Option<L>,

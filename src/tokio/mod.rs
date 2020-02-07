@@ -8,7 +8,7 @@ mod listener;
 mod race;
 
 use crate::error::{box_error, Error};
-use crate::implementation::Impl;
+use crate::implementation::Implementation;
 use crate::{Endpoint, Framer, Listener};
 pub use connection::Connection;
 
@@ -19,7 +19,7 @@ use snafu::ResultExt;
 pub struct Tokio;
 
 #[async_trait]
-impl Impl for Tokio {
+impl Implementation for Tokio {
     async fn connection<F, L, R>(
         framer: F,
         _local: Option<L>,

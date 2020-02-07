@@ -5,7 +5,7 @@ use std::marker::Send as StdSend;
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub enum Error {
-    /// Failed to initate a connection
+    /// Failed to initiate a connection
     #[snafu(display("failed to initiate connection: {}", source))]
     Initiate { source: Box<dyn StdError + StdSend> },
 
@@ -33,7 +33,7 @@ pub enum Error {
     #[snafu(display("failed to decode data: {}", source))]
     Decode { source: Box<dyn StdError + StdSend> },
 
-    ///
+    /// Connection terminated unexpectedly
     #[snafu(display("connection terminated unexpectedly: {}", source))]
     Connection { source: Box<dyn StdError + StdSend> },
 }

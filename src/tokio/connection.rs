@@ -22,6 +22,8 @@ pub struct Connection<F> {
     inner: TokioConnection,
     buffer: BytesMut,
     framer: F,
+    local: SocketAddr,
+    remote: SocketAddr,
 }
 
 #[derive(Debug)]
@@ -63,6 +65,13 @@ impl TokioConnection {
     fn abort(self) {
         // Drop self, as underlying types abort on drop
     }
+
+    fn local(&self) -> ::std::io::Result<SocketAddr> {
+        match self {
+            TokioConnection::TCP(stream) => stream.local_addr(),
+            TokioConnection::UDP(socket) => socket.local_addr(),
+        }
+    }
 }
 
 impl<F> Connection<F>
@@ -89,22 +98,33 @@ where
             Preference::Prohibit => create_udp(addr).await?,
         };
 
+        let local = conn.local().with_context(|| Open)?;
         Ok(Box::new(Connection::<F> {
             inner: conn,
             buffer: BytesMut::new(),
             framer,
+            remote: addr,
+            local,
         }))
     }
 
-    pub(crate) fn from_existing<S>(inner: S, framer: F) -> Box<dyn crate::Connection<F>>
+    pub(crate) fn from_existing<S>(
+        inner: S,
+        framer: F,
+        remote: SocketAddr,
+    ) -> Result<Box<dyn crate::Connection<F>>, Error>
     where
         S: Into<TokioConnection>,
     {
-        Box::new(Connection::<F> {
-            inner: inner.into(),
+        let conn = inner.into();
+        let local = conn.local().with_context(|| Open)?;
+        Ok(Box::new(Connection::<F> {
+            inner: conn,
             buffer: BytesMut::new(),
             framer,
-        })
+            remote,
+            local,
+        }))
     }
 }
 
@@ -166,6 +186,14 @@ where
     fn abort(self: Box<Self>) {
         debug!("abort connection");
         self.inner.abort()
+    }
+
+    fn remote_endpoint(&self) -> SocketAddr {
+        self.remote
+    }
+
+    fn local_endpoint(&self) -> SocketAddr {
+        self.local
     }
 }
 
