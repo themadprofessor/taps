@@ -1,8 +1,8 @@
+use super::Error;
+use crate::{Decode, Encode};
 use bytes::BytesMut;
 use std::error::Error as StdError;
 use std::marker::Send as StdSend;
-use super::Error;
-use crate::{Encode, Decode};
 
 pub trait Framer<S, R>: Send + Sync + 'static {
     type MetaKey;

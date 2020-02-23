@@ -41,17 +41,15 @@ where
     F: Framer + Clone,
 {
     debug!("racing");
-    endpoint
-        .resolve()
-        .await
-        .map_err(box_error)
-        .with_context(|| Resolve)?
-        .into_iter()
-        .map(|addr| add_delay(addr, &props, framer.clone()))
-        .collect::<FuturesUnordered<_>>()
-        // Get the first successful connection, sadly waits for all connections to connect/close
-        .fold(Err(Error::NoEndpoint), |acc, res| {
-            ::futures::future::ready(if acc.is_ok() { acc } else { res })
-        })
-        .await
+    ::futures::future::select_ok(
+        endpoint
+            .resolve()
+            .await
+            .map_err(box_error)
+            .with_context(|| Resolve)?
+            .into_iter()
+            .map(|addr| add_delay(addr, &props, framer.clone())),
+    )
+    .await
+    .map(|x| x.0)
 }

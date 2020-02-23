@@ -18,7 +18,7 @@ use std::marker::Send as StdSend;
 pub struct Http<S, R> {
     headers: HeaderMap,
     _send: PhantomData<S>,
-    _recv: PhantomData<R>
+    _recv: PhantomData<R>,
 }
 
 /// Errors which the [Http](struct.Http.html) framer can return.
@@ -48,7 +48,7 @@ pub enum HttpError {
 impl<S, R> Framer<S, R> for Http<S, R>
 where
     S: Encode,
-    R: Decode
+    R: Decode,
 {
     type MetaKey = HeaderName;
     type MetaValue = HeaderValue;
