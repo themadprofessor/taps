@@ -6,16 +6,16 @@ use futures::task::{Context, Poll};
 use futures::{Stream, StreamExt};
 use snafu::ResultExt;
 use std::marker::Unpin;
+use std::net::SocketAddr;
 use std::pin::Pin;
 use tokio::net::TcpListener;
-use std::net::SocketAddr;
 
 pub struct Listener<F> {
     limit: Option<usize>,
     framer: F,
     inner: TcpListener,
     local: SocketAddr,
-    remote: SocketAddr
+    remote: SocketAddr,
 }
 
 impl<F> Stream for Listener<F>

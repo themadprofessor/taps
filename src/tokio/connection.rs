@@ -7,8 +7,8 @@ use snafu::ResultExt;
 
 use crate::error::box_error;
 use crate::error::Error as TapsError;
-use crate::frame::Framer;
 use crate::properties::{Preference, SelectionProperty, TransportProperties};
+use crate::Framer;
 use log::{debug, trace};
 use std::net::{Shutdown, SocketAddr};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};

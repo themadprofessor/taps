@@ -1,9 +1,9 @@
 use crate::error::box_error;
-use crate::frame::Framer;
 use crate::properties::TransportProperties;
 use crate::tokio::connection::Connection;
 use crate::tokio::error::{Error, Resolve};
 use crate::Endpoint;
+use crate::Framer;
 use futures::stream::FuturesUnordered;
 use futures::{Future, FutureExt, StreamExt};
 use log::{debug, trace};

@@ -90,16 +90,6 @@ pub trait Encode {
     }
 }
 
-/// The `Decode` trait allows an object to be decoded.
-pub trait Decode {
-    type Error: StdSend + StdError;
-
-    /// Attempt to decode an object from the given `Bytes.
-    fn decode(data: &mut BytesMut) -> Result<Self, Self::Error>
-    where
-        Self: Sized;
-}
-
 impl Encode for &[u8] {
     type Error = ::std::convert::Infallible;
 
@@ -136,40 +126,5 @@ impl Encode for String {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.len(), Some(self.len()))
-    }
-}
-
-impl Decode for () {
-    type Error = ::std::convert::Infallible;
-
-    fn decode(_data: &mut BytesMut) -> Result<Self, Self::Error>
-    where
-        Self: Sized,
-    {
-        Ok(())
-    }
-}
-
-impl Decode for Vec<u8> {
-    type Error = ::std::convert::Infallible;
-
-    fn decode(data: &mut BytesMut) -> Result<Self, Self::Error>
-    where
-        Self: Sized,
-    {
-        let res = data.to_vec();
-        data.advance(res.len());
-        Ok(res)
-    }
-}
-
-impl Decode for String {
-    type Error = ::std::convert::Infallible;
-
-    fn decode(data: &mut BytesMut) -> Result<Self, Self::Error>
-    where
-        Self: Sized,
-    {
-        Ok(String::from_utf8_lossy(data).to_string())
     }
 }

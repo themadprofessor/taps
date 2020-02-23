@@ -1,7 +1,7 @@
 //! A naive HTTP framer implementation built upon the `http` crate.
 
 use crate::error::box_error;
-use crate::frame::Framer;
+use crate::Framer;
 use crate::{Decode, Encode};
 use bytes::{Buf, BytesMut};
 use http::header::HeaderName;
@@ -15,9 +15,10 @@ use std::marker::Send as StdSend;
 
 /// Naive HTTP framer implementation. **NOT PRODUCTION SAFE**
 #[derive(Debug, Clone, Default)]
-pub struct Http<T> {
+pub struct Http<S, R> {
     headers: HeaderMap,
-    _data: PhantomData<T>,
+    _send: PhantomData<S>,
+    _recv: PhantomData<R>
 }
 
 /// Errors which the [Http](struct.Http.html) framer can return.
@@ -44,14 +45,16 @@ pub enum HttpError {
     InvalidBody { source: Box<dyn StdError + StdSend> },
 }
 
-impl<T> Encode for Request<T>
+impl<S, R> Framer<S, R> for Http<S, R>
 where
-    T: Encode,
-    <T as Encode>::Error: 'static,
+    S: Encode,
+    R: Decode
 {
+    type MetaKey = HeaderName;
+    type MetaValue = HeaderValue;
     type Error = HttpError;
 
-    fn encode(&self, data: &mut BytesMut) -> Result<(), Self::Error> {
+    fn frame(&mut self, item: S, data: &mut BytesMut) -> Result<(), Self::Error> {
         let req = self;
         trace!("request method: {}", req.method());
         trace!("request uri: {}", req.uri());
@@ -85,19 +88,8 @@ where
             .map_err(box_error)
             .with_context(|| InvalidBody)
     }
-}
 
-impl<T> Decode for Response<T>
-where
-    T: Decode,
-    <T as Decode>::Error: 'static,
-{
-    type Error = HttpError;
-
-    fn decode(data: &mut BytesMut) -> Result<Self, Self::Error>
-    where
-        Self: Sized,
-    {
+    fn deframe(&mut self, data: &mut BytesMut) -> Result<R, Self::Error> {
         let mut response = Response::builder();
         let full_response = String::from_utf8_lossy(data);
         let mut iter = full_response.split("\r\n");
@@ -135,32 +127,11 @@ where
             .with_context(|| MissingEmptyLine)?
             + 4; // Find returns the index of the first char in the pattern
         data.advance(header_len);
-        let body = T::decode(data)
+        let body = R::decode(data)
             .map_err(box_error)
             .with_context(|| InvalidBody)?;
 
         response.body(body).with_context(|| InvalidHeader)
-    }
-}
-
-impl<T> Framer for Http<T>
-where
-    T: Encode + Decode + Send + Sync + 'static,
-    <T as Encode>::Error: 'static,
-    <T as Decode>::Error: 'static,
-{
-    type Input = Request<T>;
-    type Output = Response<T>;
-    type MetaKey = HeaderName;
-    type MetaValue = HeaderValue;
-    type Error = HttpError;
-
-    fn frame(&mut self, item: Self::Input, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        item.encode(dst)
-    }
-
-    fn deframe(&mut self, src: &mut BytesMut) -> Result<Option<Self::Output>, Self::Error> {
-        Self::Output::decode(src).map(Some)
     }
 
     fn add_metadata(&mut self, key: Self::MetaKey, value: Self::MetaValue) {

@@ -1,23 +1,19 @@
 use crate::error::Error;
-use crate::frame::Framer;
+use crate::Framer;
 use crate::{Decode, Encode};
 use async_trait::async_trait;
 use std::net::SocketAddr;
 
 #[async_trait]
-pub trait Connection<F>: Send
+pub trait Connection<F, S, R>: Send
 where
-    F: Framer,
+    F: Framer<S, R>,
 {
     /// Send data over this connection.
-    async fn send(&mut self, data: F::Input) -> Result<(), Error>
-    where
-        F::Input: Encode;
+    async fn send(&mut self, data: S) -> Result<(), Error>;
 
     /// Receive data from this connection.
-    async fn receive(&mut self) -> Result<F::Output, Error>
-    where
-        F::Output: Decode;
+    async fn receive(&mut self) -> Result<R, Error>;
 
     /// Close this connection gracefully.
     async fn close(self: Box<Self>) -> Result<(), Error>;

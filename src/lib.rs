@@ -2,16 +2,14 @@
 #![forbid(unsafe_code)]
 
 pub use connection::Connection;
-pub use encode::*;
-pub use frame::Framer;
+pub use codec::*;
 pub use listener::Listener;
 pub use preconnection::Preconnection;
 pub use resolve::Endpoint;
 
 mod connection;
-mod encode;
+pub mod codec;
 pub mod error;
-mod frame;
 pub mod http;
 mod implementation;
 mod listener;
@@ -25,8 +23,7 @@ pub mod tokio;
 /// TAPS prelude, intended for glob imports.
 pub mod prelude {
     pub use crate::connection::Connection;
-    pub use crate::encode::*;
-    pub use crate::frame::Framer;
+    pub use crate::codec::*;
     pub use crate::listener::Listener;
     pub use crate::preconnection::Preconnection;
     pub use crate::resolve::Endpoint;
