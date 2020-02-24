@@ -12,33 +12,37 @@ use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::time;
 
-fn add_delay<F>(
+async fn add_delay<F, S, R>(
     addr: SocketAddr,
     props: &TransportProperties,
     framer: F,
-) -> impl Future<Output = Result<Box<dyn crate::Connection<F>>, Error>> + '_
+) -> Result<Box<dyn crate::Connection<F, S, R>>, Error>
 where
-    F: Framer,
+    F: Framer<S, R>,
+    S: Send + 'static,
+    R: Send + 'static,
 {
     match addr {
         SocketAddr::V4(_) => {
             trace!("delaying v4");
-            time::delay_for(Duration::from_millis(5))
+            time::delay_for(Duration::from_millis(5)).await
         }
-        SocketAddr::V6(_) => time::delay_for(Duration::from_millis(0)),
-    }
-    .then(move |_| Connection::create(addr, props, framer))
+        SocketAddr::V6(_) => time::delay_for(Duration::from_millis(0)).await,
+    };
+    Connection::create(addr, props, framer).await
 }
 
-pub async fn race<E, F>(
+pub async fn race<E, F, S, R>(
     endpoint: E,
     props: &TransportProperties,
     framer: F,
-) -> Result<Box<dyn crate::Connection<F>>, Error>
+) -> Result<Box<dyn crate::Connection<F, S, R>>, Error>
 where
     E: Endpoint,
     <E as Endpoint>::Error: 'static,
-    F: Framer + Clone,
+    F: Framer<S, R> + Clone,
+    S: Send + 'static,
+    R: Send + 'static,
 {
     debug!("racing");
     ::futures::future::select_ok(

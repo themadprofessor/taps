@@ -10,6 +10,7 @@ use crate::error::Error as TapsError;
 use crate::properties::{Preference, SelectionProperty, TransportProperties};
 use crate::Framer;
 use log::{debug, trace};
+use std::marker::PhantomData;
 use std::net::{Shutdown, SocketAddr};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpStream, UdpSocket};
@@ -18,12 +19,17 @@ const BUFFER_SIZE: usize = 1024;
 
 /// Tokio-based [Connection](../trait.Connection.html) implementation.
 #[derive(Debug)]
-pub struct Connection<F> {
+pub struct Connection<F, S, R>
+where
+    F: Framer<S, R>,
+{
     inner: TokioConnection,
     buffer: BytesMut,
     framer: F,
     local: SocketAddr,
     remote: SocketAddr,
+    _send: PhantomData<S>,
+    _recv: PhantomData<R>,
 }
 
 #[derive(Debug)]
@@ -74,15 +80,17 @@ impl TokioConnection {
     }
 }
 
-impl<F> Connection<F>
+impl<F, S, R> Connection<F, S, R>
 where
-    F: Framer,
+    F: Framer<S, R>,
+    S: Send + 'static,
+    R: Send + 'static,
 {
     pub(crate) async fn create(
         addr: SocketAddr,
         props: &TransportProperties,
         framer: F,
-    ) -> Result<Box<dyn crate::Connection<F>>, Error> {
+    ) -> Result<Box<dyn crate::Connection<F, S, R>>, Error> {
         let rely: Preference = props.get(SelectionProperty::Reliability);
         trace!("reliability: {}", rely);
         let conn = match rely {
@@ -99,43 +107,49 @@ where
         };
 
         let local = conn.local().with_context(|| Open)?;
-        Ok(Box::new(Connection::<F> {
+        Ok(Box::new(Connection::<F, S, R> {
             inner: conn,
             buffer: BytesMut::new(),
             framer,
             remote: addr,
             local,
+            _recv: PhantomData,
+            _send: PhantomData,
         }))
     }
 
-    pub(crate) fn from_existing<S>(
-        inner: S,
+    pub(crate) fn from_existing<I>(
+        inner: I,
         framer: F,
         remote: SocketAddr,
-    ) -> Result<Box<dyn crate::Connection<F>>, Error>
+    ) -> Result<Box<dyn crate::Connection<F, S, R>>, Error>
     where
-        S: Into<TokioConnection>,
+        I: Into<TokioConnection>,
     {
         let conn = inner.into();
         let local = conn.local().with_context(|| Open)?;
-        Ok(Box::new(Connection::<F> {
+        Ok(Box::new(Connection::<F, S, R> {
             inner: conn,
             buffer: BytesMut::new(),
             framer,
             remote,
             local,
+            _send: PhantomData,
+            _recv: PhantomData,
         }))
     }
 }
 
 #[async_trait]
-impl<F> crate::Connection<F> for Connection<F>
+impl<F, S, R> crate::Connection<F, S, R> for Connection<F, S, R>
 where
-    F: Framer,
+    F: Framer<S, R>,
+    S: Send,
+    R: Send,
 {
-    async fn send(&mut self, data: F::Input) -> Result<(), TapsError>
+    async fn send(&mut self, data: S) -> Result<(), TapsError>
     where
-        F::Input: Encode,
+        S: Encode,
     {
         let length = data.size_hint();
         trace!("data size hint: {:?}", length);
@@ -153,9 +167,9 @@ where
             .with_context(|| crate::error::Send)
     }
 
-    async fn receive(&mut self) -> Result<F::Output, TapsError>
+    async fn receive(&mut self) -> Result<R, TapsError>
     where
-        F::Output: Decode,
+        R: Decode,
     {
         self.buffer.reserve(BUFFER_SIZE);
         let read = self
@@ -167,7 +181,6 @@ where
         trace!("bytes read: {}", read);
         self.framer
             .deframe(&mut self.buffer)
-            .map(Option::unwrap)
             .map_err(box_error)
             .with_context(|| Deframe)
             .map_err(box_error)

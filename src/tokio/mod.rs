@@ -20,16 +20,18 @@ pub struct Tokio;
 
 #[async_trait]
 impl Implementation for Tokio {
-    async fn connection<F, L, R>(
+    async fn connection<F, L, R, SD, RD>(
         framer: F,
         _local: Option<L>,
         remote: R,
         props: &TransportProperties,
-    ) -> Result<Box<dyn crate::Connection<F>>, Error>
+    ) -> Result<Box<dyn crate::Connection<F, SD, RD>>, Error>
     where
-        F: Framer + Clone,
+        F: Framer<SD, RD> + Unpin + Clone,
         L: Endpoint,
         R: Endpoint,
+        SD: Send + Unpin + 'static,
+        RD: Send + Unpin + 'static,
     {
         race::race(remote, props, framer)
             .await
@@ -37,14 +39,17 @@ impl Implementation for Tokio {
             .with_context(|| crate::error::Initiate)
     }
 
-    async fn listener<F, L, R>(
+    async fn listener<F, L, R, SD, RD>(
         framer: F,
         local: L,
         remote: Option<R>,
         props: &TransportProperties,
-    ) -> Result<Box<dyn Listener<F, Item = Result<Box<dyn crate::Connection<F>>, Error>>>, Error>
+    ) -> Result<
+        Box<dyn Listener<F, SD, RD, Item = Result<Box<dyn crate::Connection<F, SD, RD>>, Error>>>,
+        Error,
+    >
     where
-        F: Framer + Send + 'static,
+        F: Framer<SD, RD>,
         L: Endpoint,
         R: Endpoint,
     {

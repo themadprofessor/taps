@@ -7,7 +7,7 @@ use std::marker::Send as StdSend;
 pub trait Framer<S, R>: Send + Sync + 'static {
     type MetaKey;
     type MetaValue;
-    type Error: StdError + StdSend;
+    type Error: StdError + StdSend + 'static;
 
     fn frame(&mut self, item: S, dst: &mut BytesMut) -> Result<(), Self::Error>
     where

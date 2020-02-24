@@ -10,10 +10,14 @@ where
     F: Framer<S, R>,
 {
     /// Send data over this connection.
-    async fn send(&mut self, data: S) -> Result<(), Error>;
+    async fn send(&mut self, data: S) -> Result<(), Error>
+    where
+        S: Encode;
 
     /// Receive data from this connection.
-    async fn receive(&mut self) -> Result<R, Error>;
+    async fn receive(&mut self) -> Result<R, Error>
+    where
+        R: Decode;
 
     /// Close this connection gracefully.
     async fn close(self: Box<Self>) -> Result<(), Error>;

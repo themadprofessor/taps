@@ -5,25 +5,29 @@ use crate::{Connection, Framer};
 use futures::task::{Context, Poll};
 use futures::{Stream, StreamExt};
 use snafu::ResultExt;
+use std::marker::PhantomData;
 use std::marker::Unpin;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use tokio::net::TcpListener;
 
-pub struct Listener<F> {
+pub struct Listener<F, S, R> {
     limit: Option<usize>,
     framer: F,
     inner: TcpListener,
     local: SocketAddr,
     remote: SocketAddr,
+    _send: PhantomData<S>,
+    _recv: PhantomData<R>,
 }
 
-impl<F> Stream for Listener<F>
+impl<F, S, R> Stream for Listener<F, S, R>
 where
-    F: Framer + Clone + Unpin,
-    F::Input: Send,
+    F: Framer<S, R> + Clone + Unpin,
+    S: Send + 'static,
+    R: Send + 'static,
 {
-    type Item = Result<Box<dyn Connection<F>>, crate::error::Error>;
+    type Item = Result<Box<dyn Connection<F, S, R>>, crate::error::Error>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match self.as_mut().inner.incoming().poll_next_unpin(cx) {
@@ -44,10 +48,11 @@ where
     }
 }
 
-impl<F> crate::Listener<F> for Listener<F>
+impl<F, S, R> crate::Listener<F, S, R> for Listener<F, S, R>
 where
-    F: Framer + Clone + Unpin,
-    F::Input: Send,
+    F: Framer<S, R> + Clone + Unpin,
+    S: Send + 'static,
+    R: Send + 'static,
 {
     fn connection_limit(&mut self, limit: usize) {
         self.limit = Some(limit);

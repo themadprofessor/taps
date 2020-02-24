@@ -10,7 +10,6 @@ pub use resolve::Endpoint;
 pub mod codec;
 mod connection;
 pub mod error;
-pub mod http;
 mod implementation;
 mod listener;
 mod preconnection;
