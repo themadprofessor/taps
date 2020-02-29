@@ -24,8 +24,8 @@ pub struct Listener<F, S, R> {
 impl<F, S, R> Stream for Listener<F, S, R>
 where
     F: Framer<S, R> + Clone + Unpin,
-    S: Send + 'static,
-    R: Send + 'static,
+    S: Send + Unpin + 'static,
+    R: Send + Unpin + 'static,
 {
     type Item = Result<Box<dyn Connection<F, S, R>>, crate::error::Error>;
 
@@ -51,8 +51,8 @@ where
 impl<F, S, R> crate::Listener<F, S, R> for Listener<F, S, R>
 where
     F: Framer<S, R> + Clone + Unpin,
-    S: Send + 'static,
-    R: Send + 'static,
+    S: Send + Unpin + 'static,
+    R: Send + Unpin + 'static,
 {
     fn connection_limit(&mut self, limit: usize) {
         self.limit = Some(limit);

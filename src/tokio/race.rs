@@ -52,7 +52,7 @@ where
             .map_err(box_error)
             .with_context(|| Resolve)?
             .into_iter()
-            .map(|addr| add_delay(addr, &props, framer.clone())),
+            .map(|addr| add_delay(addr, &props, framer.clone()).boxed()),
     )
     .await
     .map(|x| x.0)

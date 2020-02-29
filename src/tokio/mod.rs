@@ -27,11 +27,11 @@ impl Implementation for Tokio {
         props: &TransportProperties,
     ) -> Result<Box<dyn crate::Connection<F, SD, RD>>, Error>
     where
-        F: Framer<SD, RD> + Unpin + Clone,
+        F: Framer<SD, RD> + Clone,
         L: Endpoint,
         R: Endpoint,
-        SD: Send + Unpin + 'static,
-        RD: Send + Unpin + 'static,
+        SD: Send + 'static,
+        RD: Send + 'static,
     {
         race::race(remote, props, framer)
             .await
