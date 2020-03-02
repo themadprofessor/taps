@@ -12,7 +12,7 @@ pub trait Implementation {
         props: &TransportProperties,
     ) -> Result<Box<dyn Connection<F>>, Error>
     where
-        F: Framer + Clone,
+        F: Framer,
         L: Endpoint,
         R: Endpoint;
 

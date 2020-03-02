@@ -1,6 +1,6 @@
 use crate::error::box_error;
 use crate::properties::TransportProperties;
-use crate::tokio::connection::Connection;
+use crate::tokio::connection::{Connecting, Connection};
 use crate::tokio::error::{Error, Resolve};
 use crate::Endpoint;
 use crate::Framer;
@@ -12,14 +12,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::time;
 
-async fn add_delay<F>(
-    addr: SocketAddr,
-    props: &TransportProperties,
-    framer: F,
-) -> Result<Box<dyn crate::Connection<F>>, Error>
-where
-    F: Framer,
-{
+async fn add_delay(addr: SocketAddr, props: &TransportProperties) -> Result<Connecting, Error> {
     match addr {
         SocketAddr::V4(_) => {
             trace!("delaying v4");
@@ -27,7 +20,7 @@ where
         }
         SocketAddr::V6(_) => time::delay_for(Duration::from_millis(0)).await,
     };
-    Connection::create(addr, props, framer).await
+    Connecting::create(addr, props).await
 }
 
 pub async fn race<E, F>(
@@ -38,7 +31,7 @@ pub async fn race<E, F>(
 where
     E: Endpoint,
     <E as Endpoint>::Error: 'static,
-    F: Framer + Clone,
+    F: Framer,
 {
     debug!("racing");
     ::futures::future::select_ok(
@@ -48,8 +41,8 @@ where
             .map_err(box_error)
             .with_context(|| Resolve)?
             .into_iter()
-            .map(|addr| add_delay(addr, &props, framer.clone()).boxed()),
+            .map(|addr| add_delay(addr, &props).boxed()),
     )
     .await
-    .map(|x| x.0)
+    .map(|x| x.0.framer(framer))
 }

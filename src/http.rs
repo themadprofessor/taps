@@ -1,6 +1,6 @@
-use crate::codec::Error as CodecError;
+use crate::codec::DecodeError;
 use crate::error::box_error;
-use crate::{Decode, Encode};
+use crate::{Decode, DeframeError, Encode, Framer};
 use bytes::{Buf, BytesMut};
 use http::header::{HeaderName, InvalidHeaderName, InvalidHeaderValue};
 use http::response::Builder;
@@ -8,18 +8,27 @@ use http::status::InvalidStatusCode;
 use http::{HeaderValue, Request, Response, StatusCode, Version};
 use snafu::{ResultExt, Snafu};
 use std::convert::TryInto;
+use std::marker::PhantomData;
 
-pub struct Http;
+#[derive(Default, Debug)]
+pub struct Http<S, R>
+where
+    R: Decode + Send + Sync,
+{
+    _send: PhantomData<S>,
+    _recv: PhantomData<R>,
+    decode_state: Option<DecodeState<R::State>>,
+}
 
 #[derive(Debug, Default)]
-struct DecodeState<T> {
+pub struct DecodeState<T> {
     builder: Builder,
     state: State,
     body_state: T,
 }
 
-#[derive(Debug)]
-enum State {
+#[derive(Debug, Copy, Clone)]
+pub enum State {
     Status,
     Headers,
     Body,
@@ -70,6 +79,48 @@ pub enum Error {
     },
 }
 
+impl<S, R> Framer for Http<S, R>
+where
+    S: Encode + Send + Sync + 'static,
+    R: Decode + Send + Sync + 'static,
+    <R as Decode>::State: Send + Sync,
+{
+    type Input = Request<S>;
+    type Output = Response<R>;
+    type MetaKey = ();
+    type MetaValue = ();
+    type Error = Error;
+
+    fn frame(&mut self, item: Self::Input, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        item.encode(dst)
+    }
+
+    fn deframe(&mut self, src: &mut BytesMut) -> Result<Self::Output, DeframeError<Self::Error>> {
+        if self.decode_state.is_none() {
+            self.decode_state = Some(<Self::Output as Decode>::State::default());
+        }
+
+        match Self::Output::decode(src, self.decode_state.take().unwrap()) {
+            Ok(x) => Ok(x),
+            Err(err) => match err {
+                DecodeError::Incomplete(s) => {
+                    self.decode_state = Some(s);
+                    Err(DeframeError::Incomplete)
+                }
+                DecodeError::Err(e) => Err(DeframeError::Err(e)),
+            },
+        }
+    }
+
+    fn clear(&mut self) {
+        self.decode_state = None;
+    }
+
+    fn add_metadata(&mut self, key: Self::MetaKey, value: Self::MetaValue) {
+        unimplemented!()
+    }
+}
+
 impl<T> Decode for Response<T>
 where
     T: Decode,
@@ -78,24 +129,33 @@ where
     type Error = Error;
     type State = DecodeState<T::State>;
 
-    fn decode(data: &mut BytesMut, state: Self::State) -> Result<Self, CodecError<Self::Error>>
+    fn decode(
+        data: &mut BytesMut,
+        mut state: Self::State,
+    ) -> Result<Self, DecodeError<Self::Error, Self::State>>
     where
         Self: Sized,
     {
         loop {
             match state.state {
-                State::Status => read_status(data, state)?,
-                State::Headers => read_header(data, state)?,
+                State::Status => state = read_status(data, state)?,
+                State::Headers => state = read_header(data, state)?,
                 State::Body => {
                     return match T::decode(data, state.body_state) {
                         Ok(x) => state
                             .builder
                             .body(x)
                             .with_context(|| InvalidResponse)
-                            .map_err(|e| CodecError::Err(e)),
-                        Err(e) => Err(box_error(e))
-                            .with_context(|| InvalidBody)
-                            .map_err(|e| CodecError::Err(e)),
+                            .map_err(DecodeError::Err),
+                        Err(e) => match e {
+                            DecodeError::Err(err) => Err(box_error(err))
+                                .with_context(|| InvalidBody)
+                                .map_err(DecodeError::Err),
+                            DecodeError::Incomplete(s) => {
+                                state.body_state = s;
+                                continue;
+                            }
+                        },
                     }
                 }
             }
@@ -145,24 +205,24 @@ impl Default for State {
     }
 }
 
-impl From<Error> for CodecError<Error> {
+impl<T> From<Error> for DecodeError<Error, DecodeState<T>> {
     fn from(e: Error) -> Self {
-        CodecError::Err(e)
+        DecodeError::Err(e)
     }
 }
 
 fn read_status<T>(
     data: &mut BytesMut,
-    state: &mut DecodeState<T>,
-) -> Result<(), CodecError<Error>> {
-    let mut raw_status = find_eol(data).ok_or_else(|| CodecError::Incomplete)?;
+    state: DecodeState<T>,
+) -> Result<DecodeState<T>, DecodeError<Error, DecodeState<T>>> {
+    let (mut raw_status, mut state) = find_eol(data, state)?;
 
-    let http_start = raw_status
-        .windows(5)
-        .enumerate()
-        .find(|x| x.1 == b"HTTP/")
-        .ok_or_else(|| CodecError::Incomplete)?
-        .0;
+    let http_start = raw_status.windows(5).enumerate().find(|x| x.1 == b"HTTP/");
+    if http_start.is_none() {
+        return Err(DecodeError::Incomplete(state));
+    }
+    let http_start = http_start.unwrap().0;
+
     raw_status.advance(http_start + 5);
     state.builder = state.builder.version(bytes_to_ver(&raw_status[0..3])?);
     raw_status.advance(4); // Skip number and space
@@ -173,20 +233,20 @@ fn read_status<T>(
 
     state.state = State::Headers;
 
-    Ok(())
+    Ok(state)
 }
 
 fn read_header<T>(
     data: &mut BytesMut,
-    state: &mut DecodeState<T>,
-) -> Result<(), CodecError<Error>> {
-    let raw_header = find_eol(data).ok_or_else(|| CodecError::Incomplete)?;
+    state: DecodeState<T>,
+) -> Result<DecodeState<T>, DecodeError<Error, DecodeState<T>>> {
+    let (raw_header, mut state) = find_eol(data, state)?;
 
     // Reached empty line
-    if raw_header.len() == 0 && data.starts_with(b"\r\n") {
+    if raw_header.is_empty() {
         data.advance(2);
         state.state = State::Body;
-        return Ok(());
+        return Ok(state);
     }
 
     let split = raw_header
@@ -201,7 +261,7 @@ fn read_header<T>(
 
     // Skip the colon in value
     state.builder = state.builder.header(name, &value[1..]);
-    Ok(())
+    Ok(state)
 }
 
 fn bytes_to_ver(raw: &[u8]) -> Result<Version, Error> {
@@ -226,17 +286,23 @@ fn version_bytes(ver: Version) -> &'static [u8] {
     }
 }
 
-fn find_eol(data: &mut BytesMut) -> Option<BytesMut> {
+fn find_eol<T>(
+    data: &mut BytesMut,
+    state: DecodeState<T>,
+) -> Result<(BytesMut, DecodeState<T>), DecodeError<Error, DecodeState<T>>> {
     let i = data
         .windows(2)
         .enumerate()
         .find(|x| x.1 == &b"\r\n"[..])
-        .map(|x| x.0)?;
+        .map(|x| x.0);
+    if i.is_none() {
+        return Err(DecodeError::Incomplete(state));
+    }
 
-    let mut raw = data.split_to(i);
+    let raw = data.split_to(i.unwrap());
     data.advance(2); // Skip the newline and return
 
-    Some(raw)
+    Ok((raw, state))
 }
 
 fn write_request_line<T>(req: &Request<T>, data: &mut BytesMut) {

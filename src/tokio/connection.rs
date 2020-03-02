@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use bytes::BytesMut;
 use snafu::ResultExt;
 
-use crate::codec::Error as CodecError;
+use crate::codec::DeframeError;
 use crate::error::box_error;
 use crate::error::Error as TapsError;
 use crate::properties::{Preference, SelectionProperty, TransportProperties};
@@ -31,10 +31,58 @@ where
     remote: SocketAddr,
 }
 
+pub(crate) struct Connecting {
+    inner: TokioConnection,
+    local: SocketAddr,
+    remote: SocketAddr,
+}
+
 #[derive(Debug)]
 pub(crate) enum TokioConnection {
     TCP(TcpStream),
     UDP(UdpSocket),
+}
+
+impl Connecting {
+    pub(crate) async fn create(
+        addr: SocketAddr,
+        props: &TransportProperties,
+    ) -> Result<Connecting, Error> {
+        let rely: Preference = props.get(SelectionProperty::Reliability);
+        trace!("reliability: {}", rely);
+        let conn = match rely {
+            Preference::Require => create_tcp(addr).await?,
+            Preference::Prefer | Preference::Ignore => match create_tcp(addr).await {
+                Ok(c) => c,
+                Err(_) => create_udp(addr).await?,
+            },
+            Preference::Avoid => match create_udp(addr).await {
+                Ok(c) => c,
+                Err(_) => create_tcp(addr).await?,
+            },
+            Preference::Prohibit => create_udp(addr).await?,
+        };
+
+        let local = conn.local().with_context(|| Open)?;
+        Ok(Connecting {
+            remote: addr,
+            local,
+            inner: conn,
+        })
+    }
+
+    pub(crate) fn framer<F>(self, framer: F) -> Box<dyn crate::Connection<F>>
+    where
+        F: Framer,
+    {
+        Box::new(Connection {
+            inner: self.inner,
+            remote: self.remote,
+            local: self.local,
+            framer,
+            buffer: BytesMut::new(),
+        })
+    }
 }
 
 impl TokioConnection {
@@ -88,29 +136,7 @@ where
         props: &TransportProperties,
         framer: F,
     ) -> Result<Box<dyn crate::Connection<F>>, Error> {
-        let rely: Preference = props.get(SelectionProperty::Reliability);
-        trace!("reliability: {}", rely);
-        let conn = match rely {
-            Preference::Require => create_tcp(addr).await?,
-            Preference::Prefer | Preference::Ignore => match create_tcp(addr).await {
-                Ok(c) => c,
-                Err(_) => create_udp(addr).await?,
-            },
-            Preference::Avoid => match create_udp(addr).await {
-                Ok(c) => c,
-                Err(_) => create_tcp(addr).await?,
-            },
-            Preference::Prohibit => create_udp(addr).await?,
-        };
-
-        let local = conn.local().with_context(|| Open)?;
-        Ok(Box::new(Connection::<F> {
-            inner: conn,
-            buffer: BytesMut::new(),
-            framer,
-            remote: addr,
-            local,
-        }))
+        Ok(Connecting::create(addr, props).await?.framer(framer))
     }
 
     pub(crate) fn from_existing<I>(
@@ -167,16 +193,18 @@ where
             trace!("bytes read: {}", read);
             match self.framer.deframe(&mut self.buffer) {
                 Ok(x) => {
+                    self.framer.clear();
                     self.buffer.clear();
                     Ok(x)
                 }
                 Err(e) => match e {
-                    CodecError::Incomplete => continue,
-                    CodecError::Err(err) => {
+                    DeframeError::Incomplete => continue,
+                    DeframeError::Err(err) => {
+                        self.framer.clear();
                         return Err(box_error(err))
                             .with_context(|| Deframe)
                             .map_err(box_error)
-                            .with_context(|| crate::error::Receive)
+                            .with_context(|| crate::error::Receive);
                     }
                 },
             }?;

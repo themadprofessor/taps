@@ -131,7 +131,7 @@ where
 impl<F, R, I> Preconnection<F, NoEndpoint, R, I>
 where
     R: Endpoint,
-    F: Framer + Clone,
+    F: Framer,
     I: Implementation,
 {
     pub async fn initiate(self) -> Result<Box<dyn Connection<F>>, Error> {
@@ -175,7 +175,7 @@ impl<F, L, R, I> Preconnection<F, L, R, I>
 where
     L: Endpoint,
     R: Endpoint,
-    F: Framer + Clone,
+    F: Framer,
     I: Implementation,
 {
     pub async fn initiate(self) -> Result<Box<dyn Connection<F>>, Error> {

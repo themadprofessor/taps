@@ -1,4 +1,4 @@
-use super::Error;
+use crate::codec::error::DeframeError;
 use crate::{Decode, Encode};
 use bytes::BytesMut;
 use std::error::Error as StdError;
@@ -13,7 +13,9 @@ pub trait Framer: Send + Sync + 'static {
 
     fn frame(&mut self, item: Self::Input, dst: &mut BytesMut) -> Result<(), Self::Error>;
 
-    fn deframe(&mut self, src: &mut BytesMut) -> Result<Self::Output, Error<Self::Error>>;
+    fn deframe(&mut self, src: &mut BytesMut) -> Result<Self::Output, DeframeError<Self::Error>>;
+
+    fn clear(&mut self);
 
     fn add_metadata(&mut self, key: Self::MetaKey, value: Self::MetaValue);
 }

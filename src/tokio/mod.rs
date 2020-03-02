@@ -27,7 +27,7 @@ impl Implementation for Tokio {
         props: &TransportProperties,
     ) -> Result<Box<dyn crate::Connection<F>>, Error>
     where
-        F: Framer + Clone,
+        F: Framer,
         L: Endpoint,
         R: Endpoint,
     {
