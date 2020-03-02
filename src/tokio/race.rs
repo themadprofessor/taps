@@ -12,15 +12,13 @@ use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::time;
 
-async fn add_delay<F, S, R>(
+async fn add_delay<F>(
     addr: SocketAddr,
     props: &TransportProperties,
     framer: F,
-) -> Result<Box<dyn crate::Connection<F, S, R>>, Error>
+) -> Result<Box<dyn crate::Connection<F>>, Error>
 where
-    F: Framer<S, R>,
-    S: Send + 'static,
-    R: Send + 'static,
+    F: Framer,
 {
     match addr {
         SocketAddr::V4(_) => {
@@ -32,17 +30,15 @@ where
     Connection::create(addr, props, framer).await
 }
 
-pub async fn race<E, F, S, R>(
+pub async fn race<E, F>(
     endpoint: E,
     props: &TransportProperties,
     framer: F,
-) -> Result<Box<dyn crate::Connection<F, S, R>>, Error>
+) -> Result<Box<dyn crate::Connection<F>>, Error>
 where
     E: Endpoint,
     <E as Endpoint>::Error: 'static,
-    F: Framer<S, R> + Clone,
-    S: Send + 'static,
-    R: Send + 'static,
+    F: Framer + Clone,
 {
     debug!("racing");
     ::futures::future::select_ok(

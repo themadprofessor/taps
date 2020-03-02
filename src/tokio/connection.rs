@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use bytes::BytesMut;
 use snafu::ResultExt;
 
+use crate::codec::Error as CodecError;
 use crate::error::box_error;
 use crate::error::Error as TapsError;
 use crate::properties::{Preference, SelectionProperty, TransportProperties};
@@ -19,17 +20,15 @@ const BUFFER_SIZE: usize = 1024;
 
 /// Tokio-based [Connection](../trait.Connection.html) implementation.
 #[derive(Debug)]
-pub struct Connection<F, S, R>
+pub struct Connection<F>
 where
-    F: Framer<S, R>,
+    F: Framer,
 {
     inner: TokioConnection,
     buffer: BytesMut,
     framer: F,
     local: SocketAddr,
     remote: SocketAddr,
-    _send: PhantomData<S>,
-    _recv: PhantomData<R>,
 }
 
 #[derive(Debug)]
@@ -80,17 +79,15 @@ impl TokioConnection {
     }
 }
 
-impl<F, S, R> Connection<F, S, R>
+impl<F> Connection<F>
 where
-    F: Framer<S, R>,
-    S: Send + 'static,
-    R: Send + 'static,
+    F: Framer,
 {
     pub(crate) async fn create(
         addr: SocketAddr,
         props: &TransportProperties,
         framer: F,
-    ) -> Result<Box<dyn crate::Connection<F, S, R>>, Error> {
+    ) -> Result<Box<dyn crate::Connection<F>>, Error> {
         let rely: Preference = props.get(SelectionProperty::Reliability);
         trace!("reliability: {}", rely);
         let conn = match rely {
@@ -107,14 +104,12 @@ where
         };
 
         let local = conn.local().with_context(|| Open)?;
-        Ok(Box::new(Connection::<F, S, R> {
+        Ok(Box::new(Connection::<F> {
             inner: conn,
             buffer: BytesMut::new(),
             framer,
             remote: addr,
             local,
-            _recv: PhantomData,
-            _send: PhantomData,
         }))
     }
 
@@ -122,35 +117,28 @@ where
         inner: I,
         framer: F,
         remote: SocketAddr,
-    ) -> Result<Box<dyn crate::Connection<F, S, R>>, Error>
+    ) -> Result<Box<dyn crate::Connection<F>>, Error>
     where
         I: Into<TokioConnection>,
     {
         let conn = inner.into();
         let local = conn.local().with_context(|| Open)?;
-        Ok(Box::new(Connection::<F, S, R> {
+        Ok(Box::new(Connection::<F> {
             inner: conn,
             buffer: BytesMut::new(),
             framer,
             remote,
             local,
-            _send: PhantomData,
-            _recv: PhantomData,
         }))
     }
 }
 
 #[async_trait]
-impl<F, S, R> crate::Connection<F, S, R> for Connection<F, S, R>
+impl<F> crate::Connection<F> for Connection<F>
 where
-    F: Framer<S, R>,
-    S: Send,
-    R: Send,
+    F: Framer,
 {
-    async fn send(&mut self, data: S) -> Result<(), TapsError>
-    where
-        S: Encode,
-    {
+    async fn send(&mut self, data: F::Input) -> Result<(), TapsError> {
         let length = data.size_hint();
         trace!("data size hint: {:?}", length);
         let mut bytes = BytesMut::with_capacity(length.1.unwrap_or_else(|| length.0));
@@ -167,24 +155,32 @@ where
             .with_context(|| crate::error::Send)
     }
 
-    async fn receive(&mut self) -> Result<R, TapsError>
-    where
-        R: Decode,
-    {
-        self.buffer.reserve(BUFFER_SIZE);
-        let read = self
-            .inner
-            .recv(&mut self.buffer)
-            .await
-            .map_err(box_error)
-            .with_context(|| crate::error::Receive)?;
-        trace!("bytes read: {}", read);
-        self.framer
-            .deframe(&mut self.buffer)
-            .map_err(box_error)
-            .with_context(|| Deframe)
-            .map_err(box_error)
-            .with_context(|| crate::error::Receive)
+    async fn receive(&mut self) -> Result<F::Output, TapsError> {
+        loop {
+            self.buffer.reserve(BUFFER_SIZE);
+            let read = self
+                .inner
+                .recv(&mut self.buffer)
+                .await
+                .map_err(box_error)
+                .with_context(|| crate::error::Receive)?;
+            trace!("bytes read: {}", read);
+            match self.framer.deframe(&mut self.buffer) {
+                Ok(x) => {
+                    self.buffer.clear();
+                    Ok(x)
+                }
+                Err(e) => match e {
+                    CodecError::Incomplete => continue,
+                    CodecError::Err(err) => {
+                        return Err(box_error(err))
+                            .with_context(|| Deframe)
+                            .map_err(box_error)
+                            .with_context(|| crate::error::Receive)
+                    }
+                },
+            }?;
+        }
     }
 
     async fn close(self: Box<Self>) -> Result<(), TapsError> {

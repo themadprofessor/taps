@@ -16,7 +16,7 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::Err(e) => write!(f, "{}", e),
-            Error::Incomplete => f.write_str("more data needed"),
+            Error::Incomplete => write!(f, "more data needed"),
         }
     }
 }

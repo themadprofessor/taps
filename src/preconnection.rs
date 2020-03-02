@@ -31,9 +31,9 @@ pub struct NoEndpoint;
 /// - R: The type of the remote endpoint. It is [NoEndpoint](struct.NoEndpoint.html) if no remote
 /// endpoint is given
 #[derive(Debug, Clone, PartialEq)]
-pub struct Preconnection<F, L, R, SD, RD, I = DefaultImpl>
+pub struct Preconnection<F, L, R, I = DefaultImpl>
 where
-    F: Framer<SD, RD>,
+    F: Framer,
     L: EndpointState,
     R: EndpointState,
     I: Implementation,
@@ -43,16 +43,14 @@ where
     framer: F,
     trans: TransportProperties,
     _phantom: PhantomData<I>,
-    _send: PhantomData<SD>,
-    _recv: PhantomData<RD>,
 }
 
 impl EndpointState for NoEndpoint {}
 impl<T> EndpointState for T where T: Endpoint {}
 
-impl<F, SD, RD> Preconnection<F, NoEndpoint, NoEndpoint, SD, RD, DefaultImpl>
+impl<F> Preconnection<F, NoEndpoint, NoEndpoint, DefaultImpl>
 where
-    F: Framer<SD, RD>,
+    F: Framer,
 {
     /// Create a new Preconnection which has no endpoints specified.
     pub fn new(props: TransportProperties, framer: F) -> Self {
@@ -62,15 +60,13 @@ where
             trans: props,
             framer,
             _phantom: PhantomData,
-            _send: PhantomData,
-            _recv: PhantomData,
         }
     }
 }
 
-impl<F, SD, RD, I> Preconnection<F, NoEndpoint, NoEndpoint, SD, RD, I>
+impl<F, I> Preconnection<F, NoEndpoint, NoEndpoint, I>
 where
-    F: Framer<SD, RD>,
+    F: Framer,
     I: Implementation,
 {
     pub fn with_impl(props: TransportProperties, framer: F) -> Self {
@@ -80,22 +76,20 @@ where
             trans: props,
             framer,
             _phantom: PhantomData,
-            _send: PhantomData,
-            _recv: PhantomData,
         }
     }
 }
 
-impl<F, L, R, SD, RD, I> Preconnection<F, L, R, SD, RD, I>
+impl<F, L, R, I> Preconnection<F, L, R, I>
 where
     L: EndpointState,
     R: EndpointState,
-    F: Framer<SD, RD>,
+    F: Framer,
     I: Implementation,
 {
     /// Specify the local endpoint which will be used when creating a Connection from this
     /// [Preconnection](struct.Preconnection.html).
-    pub fn local_endpoint<N>(self, local: N) -> Preconnection<F, N, R, SD, RD, I>
+    pub fn local_endpoint<N>(self, local: N) -> Preconnection<F, N, R, I>
     where
         N: Endpoint,
     {
@@ -105,8 +99,6 @@ where
             trans: self.trans,
             framer: self.framer,
             _phantom: self._phantom,
-            _send: PhantomData,
-            _recv: PhantomData,
         }
     }
 
@@ -114,7 +106,7 @@ where
     /// [Preconnection](struct.Preconnection.html).
     ///
     /// No name resolution is done by this method.
-    pub fn remote_endpoint<N>(self, remote: N) -> Preconnection<F, L, N, SD, RD, I>
+    pub fn remote_endpoint<N>(self, remote: N) -> Preconnection<F, L, N, I>
     where
         N: Endpoint,
     {
@@ -124,8 +116,6 @@ where
             trans: self.trans,
             framer: self.framer,
             _phantom: self._phantom,
-            _send: PhantomData,
-            _recv: PhantomData,
         }
     }
 
@@ -138,15 +128,13 @@ where
     }
 }
 
-impl<F, R, SD, RD, I> Preconnection<F, NoEndpoint, R, SD, RD, I>
+impl<F, R, I> Preconnection<F, NoEndpoint, R, I>
 where
     R: Endpoint,
-    F: Framer<SD, RD> + Clone,
+    F: Framer + Clone,
     I: Implementation,
-    SD: Send + 'static,
-    RD: Send + 'static,
 {
-    pub async fn initiate(self) -> Result<Box<dyn Connection<F, SD, RD>>, Error> {
+    pub async fn initiate(self) -> Result<Box<dyn Connection<F>>, Error> {
         I::connection(self.framer, Option::<()>::None, self.remote, &self.trans)
             .await
             .map_err(box_error)
@@ -154,13 +142,13 @@ where
     }
 }
 
-impl<F, L, SD, RD, I> Preconnection<F, L, NoEndpoint, SD, RD, I>
+impl<F, L, I> Preconnection<F, L, NoEndpoint, I>
 where
     L: Endpoint,
-    F: Framer<SD, RD>,
+    F: Framer,
     I: Implementation,
 {
-    pub async fn listen(self) -> Result<Box<dyn Listener<F, SD, RD>>, Error> {
+    pub async fn listen(self) -> Result<Box<dyn Listener<F>>, Error> {
         I::listener(self.framer, self.local, Option::<()>::None, &self.trans)
             .await
             .map_err(box_error)
@@ -168,14 +156,14 @@ where
     }
 }
 
-impl<F, L, R, SD, RD, I> Preconnection<F, L, R, SD, RD, I>
+impl<F, L, R, I> Preconnection<F, L, R, I>
 where
     L: Endpoint,
     R: Endpoint,
-    F: Framer<SD, RD>,
+    F: Framer,
     I: Implementation,
 {
-    pub async fn listen(self) -> Result<Box<dyn Listener<F, SD, RD>>, Error> {
+    pub async fn listen(self) -> Result<Box<dyn Listener<F>>, Error> {
         I::listener(self.framer, self.local, Some(self.remote), &self.trans)
             .await
             .map_err(box_error)
@@ -183,16 +171,14 @@ where
     }
 }
 
-impl<F, L, R, SD, RD, I> Preconnection<F, L, R, SD, RD, I>
+impl<F, L, R, I> Preconnection<F, L, R, I>
 where
     L: Endpoint,
     R: Endpoint,
-    F: Framer<SD, RD> + Clone,
+    F: Framer + Clone,
     I: Implementation,
-    SD: Send + 'static,
-    RD: Send + 'static,
 {
-    pub async fn initiate(self) -> Result<Box<dyn Connection<F, SD, RD>>, Error> {
+    pub async fn initiate(self) -> Result<Box<dyn Connection<F>>, Error> {
         I::connection(self.framer, Some(self.local), self.remote, &self.trans)
             .await
             .map_err(box_error)

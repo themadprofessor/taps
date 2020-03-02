@@ -11,23 +11,19 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use tokio::net::TcpListener;
 
-pub struct Listener<F, S, R> {
+pub struct Listener<F> {
     limit: Option<usize>,
     framer: F,
     inner: TcpListener,
     local: SocketAddr,
     remote: SocketAddr,
-    _send: PhantomData<S>,
-    _recv: PhantomData<R>,
 }
 
-impl<F, S, R> Stream for Listener<F, S, R>
+impl<F> Stream for Listener<F>
 where
-    F: Framer<S, R> + Clone + Unpin,
-    S: Send + Unpin + 'static,
-    R: Send + Unpin + 'static,
+    F: Framer + Clone + Unpin,
 {
-    type Item = Result<Box<dyn Connection<F, S, R>>, crate::error::Error>;
+    type Item = Result<Box<dyn Connection<F>>, crate::error::Error>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match self.as_mut().inner.incoming().poll_next_unpin(cx) {
@@ -48,11 +44,9 @@ where
     }
 }
 
-impl<F, S, R> crate::Listener<F, S, R> for Listener<F, S, R>
+impl<F> crate::Listener<F> for Listener<F>
 where
-    F: Framer<S, R> + Clone + Unpin,
-    S: Send + Unpin + 'static,
-    R: Send + Unpin + 'static,
+    F: Framer + Clone + Unpin,
 {
     fn connection_limit(&mut self, limit: usize) {
         self.limit = Some(limit);

@@ -56,7 +56,7 @@ use std::marker::Send as StdSend;
 /// }
 /// ```
 pub trait Encode {
-    type Error: StdSend + StdError;
+    type Error: StdSend + StdError + 'static;
 
     /// Encode self into the given BytesMut.
     ///

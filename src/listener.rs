@@ -4,11 +4,9 @@ use futures::Stream;
 use std::net::SocketAddr;
 
 // The stream's item is a possible connection with the same framer and error types as this listener
-pub trait Listener<F, S, R>: Stream<Item = Result<Box<dyn Connection<F, S, R>>, Error>> + Unpin
+pub trait Listener<F>: Stream<Item = Result<Box<dyn Connection<F>>, Error>> + Unpin
 where
-    F: Framer<S, R>,
-    S: Unpin,
-    R: Unpin
+    F: Framer,
 {
     fn connection_limit(&mut self, limit: usize);
 
