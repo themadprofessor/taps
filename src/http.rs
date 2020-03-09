@@ -10,7 +10,7 @@ use snafu::{ResultExt, Snafu};
 use std::convert::TryInto;
 use std::marker::PhantomData;
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Http<S, R>
 where
     R: Decode + Send + Sync,
@@ -205,6 +205,19 @@ impl Default for State {
     }
 }
 
+impl<S, R> Default for Http<S, R>
+where
+    R: Decode + Send + Sync,
+{
+    fn default() -> Self {
+        Http {
+            _send: PhantomData,
+            _recv: PhantomData,
+            decode_state: None,
+        }
+    }
+}
+
 impl<T> From<Error> for DecodeError<Error, DecodeState<T>> {
     fn from(e: Error) -> Self {
         DecodeError::Err(e)
@@ -241,10 +254,10 @@ fn read_header<T>(
     state: DecodeState<T>,
 ) -> Result<DecodeState<T>, DecodeError<Error, DecodeState<T>>> {
     let (raw_header, mut state) = find_eol(data, state)?;
+    eprintln!("{:?}", raw_header);
 
     // Reached empty line
     if raw_header.is_empty() {
-        data.advance(2);
         state.state = State::Body;
         return Ok(state);
     }
@@ -261,6 +274,12 @@ fn read_header<T>(
 
     // Skip the colon in value
     state.builder = state.builder.header(name, &value[1..]);
+    
+    if name.eq_ignore_ascii_case(b"content-length") {
+        // Reserve content-length
+        data.reserve(&value[1..])
+    }
+    
     Ok(state)
 }
 
