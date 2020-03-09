@@ -6,6 +6,7 @@ use http::header::{HeaderName, InvalidHeaderName, InvalidHeaderValue};
 use http::response::Builder;
 use http::status::InvalidStatusCode;
 use http::{HeaderValue, Request, Response, StatusCode, Version};
+use log::{debug, trace};
 use snafu::{ResultExt, Snafu};
 use std::convert::TryInto;
 use std::marker::PhantomData;
@@ -24,6 +25,7 @@ where
 pub struct DecodeState<T> {
     builder: Builder,
     state: State,
+    content_len: Option<usize>,
     body_state: T,
 }
 
@@ -44,6 +46,15 @@ pub enum InvalidHeaderError {
 
     #[snafu(display("{}", source))]
     InvalidValue { source: InvalidHeaderValue },
+}
+
+#[derive(Debug, Snafu)]
+pub enum InvalidContentLengthError {
+    #[snafu(display("{}", source))]
+    InvalidNumber { source: std::num::ParseIntError },
+
+    #[snafu(display("{}", source))]
+    InvalidUtf8 { source: std::str::Utf8Error },
 }
 
 #[derive(Debug, Snafu)]
@@ -72,6 +83,9 @@ pub enum Error {
 
     #[snafu(display("invalid response: {}", source))]
     InvalidResponse { source: http::Error },
+
+    #[snafu(display("invalid content length: {}", source))]
+    InvalidContentLength { source: InvalidContentLengthError },
 
     #[snafu(display("invalid body: {}", source))]
     InvalidBody {
@@ -141,22 +155,27 @@ where
                 State::Status => state = read_status(data, state)?,
                 State::Headers => state = read_header(data, state)?,
                 State::Body => {
+                    debug!("Decoding Body");
                     return match T::decode(data, state.body_state) {
-                        Ok(x) => state
-                            .builder
-                            .body(x)
-                            .with_context(|| InvalidResponse)
-                            .map_err(DecodeError::Err),
+                        Ok(x) => {
+                            debug!("successfull decode");
+                            state
+                                .builder
+                                .body(x)
+                                .with_context(|| InvalidResponse)
+                                .map_err(DecodeError::Err)
+                        }
                         Err(e) => match e {
                             DecodeError::Err(err) => Err(box_error(err))
                                 .with_context(|| InvalidBody)
                                 .map_err(DecodeError::Err),
                             DecodeError::Incomplete(s) => {
                                 state.body_state = s;
-                                continue;
+                                trace!("incomplete body");
+                                Err(DecodeError::Incomplete(state))
                             }
                         },
-                    }
+                    };
                 }
             }
         }
@@ -246,6 +265,7 @@ fn read_status<T>(
 
     state.state = State::Headers;
 
+    trace!("read http status");
     Ok(state)
 }
 
@@ -254,11 +274,11 @@ fn read_header<T>(
     state: DecodeState<T>,
 ) -> Result<DecodeState<T>, DecodeError<Error, DecodeState<T>>> {
     let (raw_header, mut state) = find_eol(data, state)?;
-    eprintln!("{:?}", raw_header);
 
     // Reached empty line
     if raw_header.is_empty() {
         state.state = State::Body;
+        trace!("finished reading headers");
         return Ok(state);
     }
 
@@ -274,12 +294,20 @@ fn read_header<T>(
 
     // Skip the colon in value
     state.builder = state.builder.header(name, &value[1..]);
-    
+
     if name.eq_ignore_ascii_case(b"content-length") {
-        // Reserve content-length
-        data.reserve(&value[1..])
+        state.content_len = Some(
+            std::str::from_utf8(&value[1..])
+                .with_context(|| InvalidUtf8)
+                .with_context(|| InvalidContentLength)?
+                .trim()
+                .parse()
+                .with_context(|| InvalidNumber)
+                .with_context(|| InvalidContentLength)?,
+        );
     }
-    
+
+    trace!("read http header: {}", String::from_utf8_lossy(name));
     Ok(state)
 }
 

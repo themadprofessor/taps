@@ -2,7 +2,7 @@ use crate::tokio::error::Send as SendError;
 use crate::tokio::error::{Close, Deframe, Error, Frame, Open, Receive};
 use crate::{Decode, Encode};
 use async_trait::async_trait;
-use bytes::BytesMut;
+use bytes::{BufMut, BytesMut};
 use snafu::ResultExt;
 
 use crate::codec::DeframeError;
@@ -11,9 +11,8 @@ use crate::error::Error as TapsError;
 use crate::properties::{Preference, SelectionProperty, TransportProperties};
 use crate::Framer;
 use log::{debug, trace};
-use std::marker::PhantomData;
 use std::net::{Shutdown, SocketAddr};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpStream, UdpSocket};
 
 const BUFFER_SIZE: usize = 1024;
@@ -184,18 +183,32 @@ where
     async fn receive(&mut self) -> Result<F::Output, TapsError> {
         loop {
             self.buffer.reserve(BUFFER_SIZE);
+            let mut buffer = self.buffer.split_off(self.buffer.len());
             let read = self
                 .inner
-                .recv(&mut self.buffer)
+                .recv(&mut buffer)
                 .await
                 .map_err(box_error)
                 .with_context(|| crate::error::Receive)?;
-            trace!("bytes read: {}", read);
+
+            if read == 0 && buffer.is_empty() {
+                return Err(box_error(Error::Receive {
+                    source: tokio::io::ErrorKind::UnexpectedEof.into(),
+                }))
+                .with_context(|| Deframe)
+                .map_err(box_error)
+                .with_context(|| crate::error::Receive);
+            }
+
+            self.buffer.unsplit(buffer);
+
+            debug!("bytes read: {}", read);
+            trace!("{:?}", self.buffer);
             match self.framer.deframe(&mut self.buffer) {
                 Ok(x) => {
                     self.framer.clear();
                     self.buffer.clear();
-                    Ok(x)
+                    return Ok(x);
                 }
                 Err(e) => match e {
                     DeframeError::Incomplete => continue,
@@ -207,7 +220,7 @@ where
                             .with_context(|| crate::error::Receive);
                     }
                 },
-            }?;
+            };
         }
     }
 
