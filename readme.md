@@ -60,6 +60,14 @@ cargo doc --open
 The API relies heavily on [trait objects](https://doc.rust-lang.org/nightly/reference/types/trait-object.html?highlight=dyn#trait-objects) 
 This is to allow the underlying implementation of the TAPS API to change without applications having to rewrite any code.
 
+## Testing
+
+Run the following to test the library:
+```shell script
+cargo test
+```
+This doesn't run the tests which special setup from the tester, for example listen_cargo requires the user to send a
+request to the test (`curl -vvv --data-binary @Cargo.toml -H "Content-Type: application/toml" 127.0.0.1:8081`)
 
 ## Contributing
 

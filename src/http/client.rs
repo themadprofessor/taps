@@ -1,18 +1,16 @@
-use crate::codec::DecodeError;
+use super::*;
 use crate::error::box_error;
-use crate::{Decode, DeframeError, Encode, Framer};
-use bytes::{Buf, BytesMut};
-use http::header::{HeaderName, InvalidHeaderName, InvalidHeaderValue};
+use crate::{Decode, DecodeError, DeframeError, Encode, Framer};
+use bytes::BytesMut;
 use http::response::Builder;
-use http::status::InvalidStatusCode;
-use http::{HeaderValue, Request, Response, StatusCode, Version};
-use log::{debug, trace};
-use snafu::{ResultExt, Snafu};
-use std::convert::TryInto;
+use http::{Request, Response};
+use log::debug;
+use snafu::ResultExt;
 use std::marker::PhantomData;
+use std::convert::TryInto;
 
 #[derive(Debug)]
-pub struct Http<S, R>
+pub struct HttpClient<S, R>
 where
     R: Decode + Send + Sync,
 {
@@ -35,65 +33,7 @@ pub enum State {
     Headers,
     Body,
 }
-
-#[derive(Debug, Snafu)]
-pub enum InvalidHeaderError {
-    #[snafu(display("missing colon"))]
-    MissingColon,
-
-    #[snafu(display("{}", source))]
-    InvalidName { source: InvalidHeaderName },
-
-    #[snafu(display("{}", source))]
-    InvalidValue { source: InvalidHeaderValue },
-}
-
-#[derive(Debug, Snafu)]
-pub enum InvalidContentLengthError {
-    #[snafu(display("{}", source))]
-    InvalidNumber { source: std::num::ParseIntError },
-
-    #[snafu(display("{}", source))]
-    InvalidUtf8 { source: std::str::Utf8Error },
-}
-
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("no host header or uri specified"))]
-    NoHost,
-
-    #[snafu(display("invalid host: {}", source))]
-    InvalidHost {
-        source: http::header::InvalidHeaderValue,
-    },
-
-    #[snafu(display("failed to encode body, {}", source))]
-    Body {
-        source: Box<dyn ::std::error::Error + Send>,
-    },
-
-    #[snafu(display("invalid version"))]
-    InvalidVersion,
-
-    #[snafu(display("invalid status code: {}", source))]
-    InvalidStatus { source: InvalidStatusCode },
-
-    #[snafu(display("invalid header: {}", source))]
-    InvalidHeader { source: InvalidHeaderError },
-
-    #[snafu(display("invalid response: {}", source))]
-    InvalidResponse { source: http::Error },
-
-    #[snafu(display("invalid content length: {}", source))]
-    InvalidContentLength { source: InvalidContentLengthError },
-
-    #[snafu(display("invalid body: {}", source))]
-    InvalidBody {
-        source: Box<dyn ::std::error::Error + Send>,
-    },
-}
-
-impl<S, R> Framer for Http<S, R>
+impl<S, R> Framer for HttpClient<S, R>
 where
     S: Encode + Send + Sync + 'static,
     R: Decode + Send + Sync + 'static,
@@ -135,13 +75,13 @@ where
     }
 }
 
-impl<S, R> Clone for Http<S, R>
+impl<S, R> Clone for HttpClient<S, R>
 where
     S: Encode,
     R: Decode + Send + Sync,
 {
     fn clone(&self) -> Self {
-        Http {
+        HttpClient {
             _send: PhantomData,
             _recv: PhantomData,
             decode_state: None,
@@ -238,12 +178,12 @@ impl Default for State {
     }
 }
 
-impl<S, R> Default for Http<S, R>
+impl<S, R> Default for HttpClient<S, R>
 where
     R: Decode + Send + Sync,
 {
     fn default() -> Self {
-        Http {
+        HttpClient {
             _send: PhantomData,
             _recv: PhantomData,
             decode_state: None,
@@ -257,31 +197,6 @@ impl<T> From<Error> for DecodeError<Error, DecodeState<T>> {
     }
 }
 
-fn read_status<T>(
-    data: &mut BytesMut,
-    state: DecodeState<T>,
-) -> Result<DecodeState<T>, DecodeError<Error, DecodeState<T>>> {
-    let (mut raw_status, mut state) = find_eol(data, state)?;
-
-    let http_start = raw_status.windows(5).enumerate().find(|x| x.1 == b"HTTP/");
-    if http_start.is_none() {
-        return Err(DecodeError::Incomplete(state));
-    }
-    let http_start = http_start.unwrap().0;
-
-    raw_status.advance(http_start + 5);
-    state.builder = state.builder.version(bytes_to_ver(&raw_status[0..3])?);
-    raw_status.advance(4); // Skip number and space
-
-    state.builder = state
-        .builder
-        .status(StatusCode::from_bytes(&raw_status[0..3]).with_context(|| InvalidStatus)?);
-
-    state.state = State::Headers;
-
-    trace!("read http status");
-    Ok(state)
-}
 
 fn read_header<T>(
     data: &mut BytesMut,
@@ -325,26 +240,30 @@ fn read_header<T>(
     Ok(state)
 }
 
-fn bytes_to_ver(raw: &[u8]) -> Result<Version, Error> {
-    match raw {
-        b"0.9" => Ok(Version::HTTP_09),
-        b"1.0" => Ok(Version::HTTP_10),
-        b"1.1" => Ok(Version::HTTP_11),
-        b"2.0" => Ok(Version::HTTP_2),
-        b"3.0" => Ok(Version::HTTP_3),
-        _ => Err(Error::InvalidVersion),
-    }
-}
+fn read_status<T>(
+    data: &mut BytesMut,
+    state: DecodeState<T>,
+) -> Result<DecodeState<T>, DecodeError<Error, DecodeState<T>>> {
+    let (mut raw_status, mut state) = find_eol(data, state)?;
 
-fn version_bytes(ver: Version) -> &'static [u8] {
-    match ver {
-        Version::HTTP_09 => b"HTTP/0.9",
-        Version::HTTP_10 => b"HTTP/1.0",
-        Version::HTTP_11 => b"HTTP/1.1",
-        Version::HTTP_2 => b"HTTP/2.0",
-        Version::HTTP_3 => b"HTTP/3.0",
-        _ => panic!("invalid http version"),
+    let http_start = raw_status.windows(5).enumerate().find(|x| x.1 == b"HTTP/");
+    if http_start.is_none() {
+        return Err(DecodeError::Incomplete(state));
     }
+    let http_start = http_start.unwrap().0;
+
+    raw_status.advance(http_start + 5);
+    state.builder = state.builder.version(bytes_to_ver(&raw_status[0..3])?);
+    raw_status.advance(4); // Skip number and space
+
+    state.builder = state
+        .builder
+        .status(StatusCode::from_bytes(&raw_status[0..3]).with_context(|| InvalidStatus)?);
+
+    state.state = State::Headers;
+
+    trace!("read http status");
+    Ok(state)
 }
 
 fn find_eol<T>(
@@ -364,26 +283,4 @@ fn find_eol<T>(
     data.advance(2); // Skip the newline and return
 
     Ok((raw, state))
-}
-
-fn write_request_line<T>(req: &Request<T>, data: &mut BytesMut) {
-    data.extend_from_slice(req.method().as_str().as_bytes());
-    data.extend_from_slice(b" ");
-    data.extend_from_slice(
-        req.uri()
-            .path_and_query()
-            .map(|s| s.as_str())
-            .unwrap_or_else(|| "/")
-            .as_bytes(),
-    );
-    data.extend_from_slice(&[b' ']);
-    data.extend_from_slice(version_bytes(req.version()));
-    data.extend_from_slice(b"\r\n");
-}
-
-fn write_header(header: (&HeaderName, &HeaderValue), data: &mut BytesMut) {
-    data.extend_from_slice(header.0.as_ref());
-    data.extend_from_slice(b":");
-    data.extend_from_slice(header.1.as_bytes());
-    data.extend_from_slice(b"\r\n");
 }

@@ -3,7 +3,7 @@
 use http::{HeaderValue, Request, Version};
 use std::net::SocketAddr;
 use std::str::FromStr;
-use taps::http::Http;
+use taps::http::HttpClient;
 use taps::properties::TransportProperties;
 use taps::Preconnection;
 
@@ -13,7 +13,7 @@ async fn simple_http() {
 
     let preconnection = Preconnection::new(
         TransportProperties::default(),
-        Http::<String, ()>::default(),
+        HttpClient::<String, ()>::default(),
     )
     .remote_endpoint(SocketAddr::from_str("1.1.1.1:80").unwrap());
 
@@ -37,7 +37,7 @@ async fn simple_http_dns() {
 
     let preconnection = Preconnection::new(
         TransportProperties::default(),
-        Http::<String, ()>::default(),
+        HttpClient::<String, ()>::default(),
     )
     .remote_endpoint(("example.com", 80));
 

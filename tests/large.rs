@@ -4,14 +4,14 @@ use bytes::BytesMut;
 use cargo_toml::Manifest;
 use futures::StreamExt;
 use http::header::HOST;
-use http::Request;
+use http::{Request, Response};
 use log::{error, info};
 use std::net::SocketAddr;
 use std::ops::Deref;
 use std::str::FromStr;
-use taps::http::Http;
+use taps::http::{HttpClient, HttpServer};
 use taps::properties::TransportProperties;
-use taps::{Decode, DecodeError, Preconnection};
+use taps::{Decode, DecodeError, Preconnection, Encode};
 
 #[derive(Debug, Clone)]
 struct Cargo(Manifest);
@@ -42,14 +42,26 @@ impl Decode for Cargo {
     }
 }
 
+impl Encode for Cargo {
+    type Error = toml::ser::Error;
+
+    fn encode(&self, data: &mut BytesMut) -> Result<(), Self::Error> {
+        toml::to_vec(self.deref()).map(|x| {
+            data.extend_from_slice(&x);
+        })
+    }
+}
+
 #[ignore]
 #[tokio_macros::test]
 async fn large_cargo() {
     pretty_env_logger::init();
 
-    let preconnection =
-        Preconnection::new(TransportProperties::default(), Http::<(), Cargo>::default())
-            .remote_endpoint(SocketAddr::from_str("127.0.0.1:8081").unwrap());
+    let preconnection = Preconnection::new(
+        TransportProperties::default(),
+        HttpClient::<(), Cargo>::default(),
+    )
+    .remote_endpoint(SocketAddr::from_str("127.0.0.1:8081").unwrap());
 
     let mut connection = preconnection.initiate().await.unwrap();
     let request = Request::builder()
@@ -66,18 +78,23 @@ async fn large_cargo() {
     connection.close().await.unwrap();
 }
 
+#[ignore]
 #[tokio_macros::test]
 async fn listen_cargo() {
     pretty_env_logger::init();
 
-    let preconnection =
-        Preconnection::new(TransportProperties::default(), Http::<(), Cargo>::default())
-            .local_endpoint(SocketAddr::from_str("127.0.0.1:8081").unwrap());
+    let preconnection = Preconnection::new(
+        TransportProperties::default(),
+        HttpServer::<(), Cargo>::default(),
+    )
+    .local_endpoint(SocketAddr::from_str("127.0.0.1:8081").unwrap());
 
     let mut listener = preconnection.listen().await.unwrap();
-    while let Some(conn) = listener.next().await {
+    if let Some(conn) = listener.next().await {
         let mut conn = conn.unwrap();
         let response = conn.receive().await.unwrap();
         info!("{:?}", response.body().deref());
+
+        conn.send(Response::builder().body(()).unwrap()).await.unwrap();
     }
 }
