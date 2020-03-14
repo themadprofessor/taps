@@ -1,7 +1,8 @@
 use crate::error::box_error;
+use crate::tokio::error::Error;
 use crate::tokio::error::Listen;
 use crate::tokio::Connection as TokioConnection;
-use crate::{Connection, Framer};
+use crate::{Connection, Framer, MakeSimilar};
 use futures::task::{Context, Poll};
 use futures::{Stream, StreamExt};
 use snafu::ResultExt;
@@ -16,12 +17,32 @@ pub struct Listener<F> {
     framer: F,
     inner: TcpListener,
     local: SocketAddr,
-    remote: SocketAddr,
+    remote: Option<SocketAddr>,
+}
+
+impl<F> Listener<F> {
+    pub(crate) async fn create(
+        local: SocketAddr,
+        remote: Option<SocketAddr>,
+        framer: F,
+    ) -> Result<Box<dyn crate::Listener<F>>, Error>
+    where
+        F: Framer + MakeSimilar + Unpin,
+    {
+        let inner = TcpListener::bind(local).await.with_context(|| Listen)?;
+        Ok(Box::new(Listener {
+            limit: None,
+            framer,
+            local,
+            inner,
+            remote,
+        }))
+    }
 }
 
 impl<F> Stream for Listener<F>
 where
-    F: Framer + Clone + Unpin,
+    F: Framer + MakeSimilar + Unpin,
 {
     type Item = Result<Box<dyn Connection<F>>, crate::error::Error>;
 
@@ -34,7 +55,7 @@ where
                     res.with_context(|| Listen)
                         .and_then(|raw| {
                             let remote = raw.peer_addr().with_context(|| Listen)?;
-                            TokioConnection::from_existing(raw, self.framer.clone(), remote)
+                            TokioConnection::from_existing(raw, self.framer.make_similar(), remote)
                         })
                         .map_err(box_error)
                         .with_context(|| crate::error::Listen),
@@ -46,7 +67,7 @@ where
 
 impl<F> crate::Listener<F> for Listener<F>
 where
-    F: Framer + Clone + Unpin,
+    F: Framer + MakeSimilar + Unpin,
 {
     fn connection_limit(&mut self, limit: usize) {
         self.limit = Some(limit);
@@ -56,7 +77,7 @@ where
         self.local
     }
 
-    fn remote_endpoint(&self) -> SocketAddr {
+    fn remote_endpoint(&self) -> Option<SocketAddr> {
         self.remote
     }
 }

@@ -3,7 +3,7 @@ use crate::error::{box_error, Error};
 use crate::implementation::Implementation;
 use crate::properties::TransportProperties;
 use crate::resolve::Endpoint;
-use crate::Framer;
+use crate::{Framer, MakeSimilar};
 use crate::Listener;
 use snafu::ResultExt;
 use std::marker::PhantomData;
@@ -145,7 +145,7 @@ where
 impl<F, L, I> Preconnection<F, L, NoEndpoint, I>
 where
     L: Endpoint,
-    F: Framer,
+    F: Framer + MakeSimilar + Unpin,
     I: Implementation,
 {
     pub async fn listen(self) -> Result<Box<dyn Listener<F>>, Error> {
@@ -160,7 +160,7 @@ impl<F, L, R, I> Preconnection<F, L, R, I>
 where
     L: Endpoint,
     R: Endpoint,
-    F: Framer,
+    F: Framer + MakeSimilar + Unpin,
     I: Implementation,
 {
     pub async fn listen(self) -> Result<Box<dyn Listener<F>>, Error> {

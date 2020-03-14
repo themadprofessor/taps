@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::properties::TransportProperties;
-use crate::{Connection, Endpoint, Framer, Listener};
+use crate::{Connection, Endpoint, Framer, Listener, MakeSimilar};
 use async_trait::async_trait;
 
 #[async_trait]
@@ -23,7 +23,7 @@ pub trait Implementation {
         props: &TransportProperties,
     ) -> Result<Box<dyn Listener<F, Item = Result<Box<dyn Connection<F>>, Error>>>, Error>
     where
-        F: Framer,
+        F: Framer + MakeSimilar + Unpin,
         L: Endpoint,
         R: Endpoint;
 }

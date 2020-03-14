@@ -4,15 +4,16 @@ use bytes::BytesMut;
 use cargo_toml::Manifest;
 use http::header::HOST;
 use http::Request;
-use log::error;
+use log::{info, error};
 use std::net::SocketAddr;
 use std::ops::Deref;
 use std::str::FromStr;
 use taps::http::Http;
 use taps::properties::TransportProperties;
 use taps::{Decode, DecodeError, Preconnection};
+use futures::StreamExt;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Cargo(Manifest);
 
 impl Deref for Cargo {
@@ -41,13 +42,14 @@ impl Decode for Cargo {
     }
 }
 
+#[ignore]
 #[tokio_macros::test]
-async fn large_midi() {
+async fn large_cargo() {
     pretty_env_logger::init();
 
     let preconnection = Preconnection::new(
         TransportProperties::default(),
-        Http::<String, Cargo>::default(),
+        Http::<(), Cargo>::default(),
     )
     .remote_endpoint(SocketAddr::from_str("127.0.0.1:8081").unwrap());
 
@@ -55,13 +57,33 @@ async fn large_midi() {
     let mut request = Request::builder()
         .uri("http://127.0.0.1:8081/Cargo.toml")
         .header(HOST, "127.0.0.1")
-        .body("".to_string())
+        .body(())
         .unwrap();
 
     connection.send(request).await.unwrap();
 
     let response = connection.receive().await.unwrap();
-    eprintln!("{:?}", response.body().deref());
+    info!("{:?}", response.body().deref());
 
     connection.close().await.unwrap();
+}
+
+#[tokio_macros::test]
+async fn listen_cargo() {
+    pretty_env_logger::init();
+
+    let preconnection = Preconnection::new(
+        TransportProperties::default(),
+        Http::<(), Cargo>::default()
+    )
+    .local_endpoint(SocketAddr::from_str("127.0.0.1:8081").unwrap());
+
+    let mut listener = preconnection.listen().await.unwrap();
+    while let Some(conn) = listener.next().await {
+        let conn = conn.unwrap();
+        let response = conn.receive().await.unwrap();
+        info!("{:?}", response.body().deref());
+
+        conn.send(Buil);
+    }
 }

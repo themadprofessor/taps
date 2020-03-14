@@ -9,7 +9,7 @@ use taps::Preconnection;
 
 #[tokio_macros::test]
 async fn simple_http() {
-    pretty_env_logger::try_init();
+    pretty_env_logger::init();
 
     let preconnection = Preconnection::new(
         TransportProperties::default(),
@@ -33,7 +33,7 @@ async fn simple_http() {
 
 #[tokio_macros::test]
 async fn simple_http_dns() {
-    pretty_env_logger::try_init();
+    pretty_env_logger::init();
 
     let preconnection = Preconnection::new(
         TransportProperties::default(),

@@ -20,6 +20,9 @@ mod resolve;
 #[cfg(feature = "tokio-impl")]
 pub mod tokio;
 
+pub type ConnectionObj<F> = Box<dyn Connection<F>>;
+pub type ListenerObj<F> = Box<dyn Listener<F>>;
+
 /// TAPS prelude, intended for glob imports.
 pub mod prelude {
     pub use crate::codec::*;

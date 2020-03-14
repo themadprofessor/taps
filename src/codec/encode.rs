@@ -128,3 +128,11 @@ impl Encode for String {
         (self.len(), Some(self.len()))
     }
 }
+
+impl Encode for () {
+    type Error = ::std::convert::Infallible;
+
+    fn encode(&self, data: &mut BytesMut) -> Result<(), Self::Error> {
+        Ok(())
+    }
+}
