@@ -1,6 +1,5 @@
 use crate::error::Error;
 use crate::Framer;
-use crate::{Decode, Encode};
 use async_trait::async_trait;
 use std::net::SocketAddr;
 

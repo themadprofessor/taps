@@ -1,6 +1,6 @@
 use crate::codec::DecodeError;
 use crate::error::box_error;
-use crate::{Decode, DeframeError, Encode, Framer, MakeSimilar};
+use crate::{Decode, DeframeError, Encode, Framer};
 use bytes::{Buf, BytesMut};
 use http::header::{HeaderName, InvalidHeaderName, InvalidHeaderValue};
 use http::response::Builder;
@@ -130,13 +130,17 @@ where
         self.decode_state = None;
     }
 
-    fn add_metadata(&mut self, key: Self::MetaKey, value: Self::MetaValue) {
+    fn add_metadata(&mut self, _key: Self::MetaKey, _value: Self::MetaValue) {
         unimplemented!()
     }
 }
 
-impl <S, R> MakeSimilar for Http<S, R> where S: Encode, R: Decode + Send + Sync {
-    fn make_similar(&self) -> Self {
+impl<S, R> Clone for Http<S, R>
+where
+    S: Encode,
+    R: Decode + Send + Sync,
+{
+    fn clone(&self) -> Self {
         Http {
             _send: PhantomData,
             _recv: PhantomData,

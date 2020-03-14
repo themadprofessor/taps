@@ -2,16 +2,16 @@
 
 use bytes::BytesMut;
 use cargo_toml::Manifest;
+use futures::StreamExt;
 use http::header::HOST;
 use http::Request;
-use log::{info, error};
+use log::{error, info};
 use std::net::SocketAddr;
 use std::ops::Deref;
 use std::str::FromStr;
 use taps::http::Http;
 use taps::properties::TransportProperties;
 use taps::{Decode, DecodeError, Preconnection};
-use futures::StreamExt;
 
 #[derive(Debug, Clone)]
 struct Cargo(Manifest);
@@ -47,14 +47,12 @@ impl Decode for Cargo {
 async fn large_cargo() {
     pretty_env_logger::init();
 
-    let preconnection = Preconnection::new(
-        TransportProperties::default(),
-        Http::<(), Cargo>::default(),
-    )
-    .remote_endpoint(SocketAddr::from_str("127.0.0.1:8081").unwrap());
+    let preconnection =
+        Preconnection::new(TransportProperties::default(), Http::<(), Cargo>::default())
+            .remote_endpoint(SocketAddr::from_str("127.0.0.1:8081").unwrap());
 
     let mut connection = preconnection.initiate().await.unwrap();
-    let mut request = Request::builder()
+    let request = Request::builder()
         .uri("http://127.0.0.1:8081/Cargo.toml")
         .header(HOST, "127.0.0.1")
         .body(())
@@ -72,18 +70,14 @@ async fn large_cargo() {
 async fn listen_cargo() {
     pretty_env_logger::init();
 
-    let preconnection = Preconnection::new(
-        TransportProperties::default(),
-        Http::<(), Cargo>::default()
-    )
-    .local_endpoint(SocketAddr::from_str("127.0.0.1:8081").unwrap());
+    let preconnection =
+        Preconnection::new(TransportProperties::default(), Http::<(), Cargo>::default())
+            .local_endpoint(SocketAddr::from_str("127.0.0.1:8081").unwrap());
 
     let mut listener = preconnection.listen().await.unwrap();
     while let Some(conn) = listener.next().await {
-        let conn = conn.unwrap();
+        let mut conn = conn.unwrap();
         let response = conn.receive().await.unwrap();
         info!("{:?}", response.body().deref());
-
-        conn.send(Buil);
     }
 }

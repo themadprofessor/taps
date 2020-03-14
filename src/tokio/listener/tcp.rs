@@ -2,11 +2,10 @@ use crate::error::box_error;
 use crate::tokio::error::Error;
 use crate::tokio::error::Listen;
 use crate::tokio::Connection as TokioConnection;
-use crate::{Connection, Framer, MakeSimilar};
+use crate::{Connection, Framer};
 use futures::task::{Context, Poll};
 use futures::{Stream, StreamExt};
 use snafu::ResultExt;
-use std::marker::PhantomData;
 use std::marker::Unpin;
 use std::net::SocketAddr;
 use std::pin::Pin;
@@ -27,7 +26,7 @@ impl<F> Listener<F> {
         framer: F,
     ) -> Result<Box<dyn crate::Listener<F>>, Error>
     where
-        F: Framer + MakeSimilar + Unpin,
+        F: Framer + Clone + Unpin,
     {
         let inner = TcpListener::bind(local).await.with_context(|| Listen)?;
         Ok(Box::new(Listener {
@@ -42,7 +41,7 @@ impl<F> Listener<F> {
 
 impl<F> Stream for Listener<F>
 where
-    F: Framer + MakeSimilar + Unpin,
+    F: Framer + Clone + Unpin,
 {
     type Item = Result<Box<dyn Connection<F>>, crate::error::Error>;
 
@@ -55,7 +54,7 @@ where
                     res.with_context(|| Listen)
                         .and_then(|raw| {
                             let remote = raw.peer_addr().with_context(|| Listen)?;
-                            TokioConnection::from_existing(raw, self.framer.make_similar(), remote)
+                            TokioConnection::from_existing(raw, self.framer.clone(), remote)
                         })
                         .map_err(box_error)
                         .with_context(|| crate::error::Listen),
@@ -67,7 +66,7 @@ where
 
 impl<F> crate::Listener<F> for Listener<F>
 where
-    F: Framer + MakeSimilar + Unpin,
+    F: Framer + Clone + Unpin,
 {
     fn connection_limit(&mut self, limit: usize) {
         self.limit = Some(limit);

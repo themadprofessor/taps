@@ -1,4 +1,4 @@
-use bytes::{Buf, BytesMut};
+use bytes::BytesMut;
 
 use std::error::Error as StdError;
 use std::marker::Send as StdSend;
@@ -132,7 +132,7 @@ impl Encode for String {
 impl Encode for () {
     type Error = ::std::convert::Infallible;
 
-    fn encode(&self, data: &mut BytesMut) -> Result<(), Self::Error> {
+    fn encode(&self, _data: &mut BytesMut) -> Result<(), Self::Error> {
         Ok(())
     }
 }

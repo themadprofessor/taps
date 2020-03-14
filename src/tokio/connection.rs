@@ -1,19 +1,21 @@
-use crate::tokio::error::Send as SendError;
-use crate::tokio::error::{Close, Deframe, Error, Frame, Open, Receive};
-use crate::{Decode, Encode};
-use async_trait::async_trait;
-use bytes::{BufMut, BytesMut};
+use std::net::{Shutdown, SocketAddr};
+
+use bytes::BytesMut;
+use log::{debug, trace};
 use snafu::ResultExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpStream, UdpSocket};
+
+use async_trait::async_trait;
 
 use crate::codec::DeframeError;
 use crate::error::box_error;
 use crate::error::Error as TapsError;
 use crate::properties::{Preference, SelectionProperty, TransportProperties};
+use crate::tokio::error::Send as SendError;
+use crate::tokio::error::{Close, Deframe, Error, Frame, Open, Receive};
+use crate::Encode;
 use crate::Framer;
-use log::{debug, trace};
-use std::net::{Shutdown, SocketAddr};
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpStream, UdpSocket};
 
 const BUFFER_SIZE: usize = 1024;
 

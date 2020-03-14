@@ -1,16 +1,17 @@
+use std::net::SocketAddr;
+use std::time::Duration;
+
+use futures::FutureExt;
+use log::{debug, trace};
+use snafu::ResultExt;
+use tokio::time;
+
 use crate::error::box_error;
 use crate::properties::TransportProperties;
-use crate::tokio::connection::{Connecting, Connection};
+use crate::tokio::connection::Connecting;
 use crate::tokio::error::{Error, Resolve};
 use crate::Endpoint;
 use crate::Framer;
-use futures::stream::FuturesUnordered;
-use futures::{Future, FutureExt, StreamExt};
-use log::{debug, trace};
-use snafu::ResultExt;
-use std::net::SocketAddr;
-use std::time::Duration;
-use tokio::time;
 
 async fn add_delay(addr: SocketAddr, props: &TransportProperties) -> Result<Connecting, Error> {
     match addr {
