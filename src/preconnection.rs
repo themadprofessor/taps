@@ -135,7 +135,7 @@ where
     I: Implementation,
 {
     pub async fn initiate(self) -> Result<Box<dyn Connection<F>>, Error> {
-        I::connection(self.framer, Option::<()>::None, self.remote, &self.trans)
+        I::connection(self.framer, Option::<&'static str>::None, self.remote, &self.trans)
             .await
             .map_err(box_error)
             .with_context(|| crate::error::Initiate)
@@ -149,7 +149,7 @@ where
     I: Implementation,
 {
     pub async fn listen(self) -> Result<Box<dyn Listener<F>>, Error> {
-        I::listener(self.framer, self.local, Option::<()>::None, &self.trans)
+        I::listener(self.framer, self.local, Option::<&'static str>::None, &self.trans)
             .await
             .map_err(box_error)
             .with_context(|| crate::error::Listen)

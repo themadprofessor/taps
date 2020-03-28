@@ -10,7 +10,7 @@ default = ["tokio-impl"]
 tokio-impl = ["tokio", "tokio-util"]
 
 [dependencies]
-tokio = { version = "0.2", features = ["tcp", "udp", "blocking", "io-util", "time", "stream"], optional=true }
+tokio = { version = "0.2", features = ["tcp", "udp", "blocking", "io-util", "time", "stream", "dns"], optional=true }
 tokio-util = { version = "0.2", optional=true }
 snafu = { version = "0.6", features = ["futures"] }
 lazy_static = "1.4"
@@ -20,7 +20,6 @@ futures = { version = "0.3", features = ["compat"] }
 async-trait = "0.1"
 bytes = "0.5"
 http = "0.2"
-dns-lookup = "1.0"
 log = "0.4"
 
 [dev-dependencies]

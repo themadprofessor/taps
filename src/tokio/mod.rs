@@ -15,6 +15,8 @@ pub use connection::Connection;
 use crate::properties::TransportProperties;
 use async_trait::async_trait;
 use snafu::ResultExt;
+use std::net::SocketAddr;
+use tokio::net::ToSocketAddrs;
 
 pub struct Tokio;
 
@@ -73,5 +75,20 @@ impl Implementation for Tokio {
             .await
             .map_err(box_error)
             .with_context(|| crate::error::Listen)
+    }
+}
+
+#[async_trait]
+impl<T> Endpoint for T
+where
+    T: ToSocketAddrs + Send + Sync + 'static,
+{
+    type Error = crate::resolve::Error;
+    type Iter = impl Iterator<Item = SocketAddr>;
+
+    async fn resolve(self) -> Result<Self::Iter, Self::Error> {
+        ::tokio::net::lookup_host(self)
+        .await
+        .with_context(|| crate::resolve::Io)
     }
 }
