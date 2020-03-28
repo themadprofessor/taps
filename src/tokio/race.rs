@@ -5,6 +5,7 @@ use futures::FutureExt;
 use log::{debug, trace};
 use snafu::ResultExt;
 use tokio::time;
+use tokio::task;
 
 use crate::error::box_error;
 use crate::properties::TransportProperties;
@@ -12,8 +13,9 @@ use crate::tokio::connection::Connecting;
 use crate::tokio::error::{Error, Resolve};
 use crate::Endpoint;
 use crate::Framer;
+use std::sync::Arc;
 
-async fn add_delay(addr: SocketAddr, props: &TransportProperties) -> Result<Connecting, Error> {
+async fn add_delay(addr: SocketAddr, props: Arc<TransportProperties>) -> Result<Connecting, Error> {
     match addr {
         SocketAddr::V4(_) => {
             trace!("delaying v4");
@@ -26,7 +28,7 @@ async fn add_delay(addr: SocketAddr, props: &TransportProperties) -> Result<Conn
 
 pub async fn race<E, F>(
     endpoint: E,
-    props: &TransportProperties,
+    props: Arc<TransportProperties>,
     framer: F,
 ) -> Result<Box<dyn crate::Connection<F>>, Error>
 where
@@ -41,8 +43,11 @@ where
             .await
             .map_err(box_error)
             .with_context(|| Resolve)?
-            .map(|addr| add_delay(addr, &props).boxed()),
+            .map(|addr| task::spawn(add_delay(addr, props.clone())).boxed()),
     )
     .await
-    .map(|x| x.0.framer(framer))
+    .map(|x| x.0)
+    .map_err(box_error)
+    .with_context(|| Resolve)?
+    .map(|x| x.framer(framer))
 }

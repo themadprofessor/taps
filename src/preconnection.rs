@@ -7,6 +7,7 @@ use crate::Framer;
 use crate::Listener;
 use snafu::ResultExt;
 use std::marker::PhantomData;
+use std::sync::Arc;
 
 #[cfg(feature = "tokio-impl")]
 pub type DefaultImpl = crate::tokio::Tokio;
@@ -41,7 +42,7 @@ where
     local: L,
     remote: R,
     framer: F,
-    trans: TransportProperties,
+    trans: Arc<TransportProperties>,
     _phantom: PhantomData<I>,
 }
 
@@ -57,7 +58,7 @@ where
         Preconnection {
             local: NoEndpoint,
             remote: NoEndpoint,
-            trans: props,
+            trans: Arc::new(props),
             framer,
             _phantom: PhantomData,
         }
@@ -73,7 +74,7 @@ where
         Preconnection {
             local: NoEndpoint,
             remote: NoEndpoint,
-            trans: props,
+            trans: Arc::new(props),
             framer,
             _phantom: PhantomData,
         }
@@ -123,8 +124,8 @@ where
         &self.trans
     }
 
-    pub fn transport_properties_mut(&mut self) -> &mut TransportProperties {
-        &mut self.trans
+    pub fn transport_properties_mut(&mut self) -> Option<&mut TransportProperties> {
+        Arc::get_mut(&mut self.trans)
     }
 }
 
@@ -135,7 +136,7 @@ where
     I: Implementation,
 {
     pub async fn initiate(self) -> Result<Box<dyn Connection<F>>, Error> {
-        I::connection(self.framer, Option::<&'static str>::None, self.remote, &self.trans)
+        I::connection(self.framer, Option::<&'static str>::None, self.remote, self.trans)
             .await
             .map_err(box_error)
             .with_context(|| crate::error::Initiate)
@@ -149,7 +150,7 @@ where
     I: Implementation,
 {
     pub async fn listen(self) -> Result<Box<dyn Listener<F>>, Error> {
-        I::listener(self.framer, self.local, Option::<&'static str>::None, &self.trans)
+        I::listener(self.framer, self.local, Option::<&'static str>::None, self.trans)
             .await
             .map_err(box_error)
             .with_context(|| crate::error::Listen)
@@ -164,7 +165,7 @@ where
     I: Implementation,
 {
     pub async fn listen(self) -> Result<Box<dyn Listener<F>>, Error> {
-        I::listener(self.framer, self.local, Some(self.remote), &self.trans)
+        I::listener(self.framer, self.local, Some(self.remote), self.trans)
             .await
             .map_err(box_error)
             .with_context(|| crate::error::Listen)
@@ -179,7 +180,7 @@ where
     I: Implementation,
 {
     pub async fn initiate(self) -> Result<Box<dyn Connection<F>>, Error> {
-        I::connection(self.framer, Some(self.local), self.remote, &self.trans)
+        I::connection(self.framer, Some(self.local), self.remote, self.trans)
             .await
             .map_err(box_error)
             .with_context(|| crate::error::Initiate)

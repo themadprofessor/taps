@@ -16,6 +16,7 @@ use crate::tokio::error::Send as SendError;
 use crate::tokio::error::{Close, Deframe, Error, Frame, Open, Receive};
 use crate::Encode;
 use crate::Framer;
+use std::sync::Arc;
 
 const BUFFER_SIZE: usize = 1024;
 
@@ -47,7 +48,7 @@ pub(crate) enum TokioConnection {
 impl Connecting {
     pub(crate) async fn create(
         addr: SocketAddr,
-        props: &TransportProperties,
+        props: Arc<TransportProperties>,
     ) -> Result<Connecting, Error> {
         let rely: Preference = props.get(SelectionProperty::Reliability);
         trace!("reliability: {}", rely);
@@ -134,7 +135,7 @@ where
 {
     pub(crate) async fn create(
         addr: SocketAddr,
-        props: &TransportProperties,
+        props: Arc<TransportProperties>,
         framer: F,
     ) -> Result<Box<dyn crate::Connection<F>>, Error> {
         Ok(Connecting::create(addr, props).await?.framer(framer))
