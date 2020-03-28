@@ -6,8 +6,8 @@ use http::response::Builder;
 use http::{Request, Response};
 use log::debug;
 use snafu::ResultExt;
-use std::marker::PhantomData;
 use std::convert::TryInto;
+use std::marker::PhantomData;
 
 #[derive(Debug)]
 pub struct HttpClient<S, R>
@@ -196,7 +196,6 @@ impl<T> From<Error> for DecodeError<Error, DecodeState<T>> {
         DecodeError::Err(e)
     }
 }
-
 
 fn read_header<T>(
     data: &mut BytesMut,

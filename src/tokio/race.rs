@@ -41,7 +41,6 @@ where
             .await
             .map_err(box_error)
             .with_context(|| Resolve)?
-            .into_iter()
             .map(|addr| add_delay(addr, &props).boxed()),
     )
     .await

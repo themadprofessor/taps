@@ -11,7 +11,7 @@ use std::ops::Deref;
 use std::str::FromStr;
 use taps::http::{HttpClient, HttpServer};
 use taps::properties::TransportProperties;
-use taps::{Decode, DecodeError, Preconnection, Encode};
+use taps::{Decode, DecodeError, Encode, Preconnection};
 
 #[derive(Debug, Clone)]
 struct Cargo(Manifest);
@@ -95,6 +95,8 @@ async fn listen_cargo() {
         let response = conn.receive().await.unwrap();
         info!("{:?}", response.body().deref());
 
-        conn.send(Response::builder().body(()).unwrap()).await.unwrap();
+        conn.send(Response::builder().body(()).unwrap())
+            .await
+            .unwrap();
     }
 }

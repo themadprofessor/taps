@@ -3,15 +3,15 @@ use crate::error::box_error;
 use crate::{Decode, DecodeError, DeframeError, Encode, Framer};
 use bytes::BytesMut;
 use http::request::Builder;
-use http::{Request, Response, Method};
+use http::{Method, Request, Response};
 use log::debug;
 use snafu::ResultExt;
 use std::marker::PhantomData;
 
 #[derive(Debug)]
 pub struct HttpServer<S, R>
-    where
-        R: Decode + Send + Sync,
+where
+    R: Decode + Send + Sync,
 {
     _send: PhantomData<S>,
     _recv: PhantomData<R>,
@@ -34,10 +34,10 @@ pub enum State {
 }
 
 impl<S, R> Framer for HttpServer<S, R>
-    where
-        S: Encode + Send + Sync + 'static,
-        R: Decode + Send + Sync + 'static,
-        <R as Decode>::State: Send + Sync,
+where
+    S: Encode + Send + Sync + 'static,
+    R: Decode + Send + Sync + 'static,
+    <R as Decode>::State: Send + Sync,
 {
     type Input = Response<S>;
     type Output = Request<R>;
@@ -76,9 +76,9 @@ impl<S, R> Framer for HttpServer<S, R>
 }
 
 impl<S, R> Clone for HttpServer<S, R>
-    where
-        S: Encode,
-        R: Decode + Send + Sync,
+where
+    S: Encode,
+    R: Decode + Send + Sync,
 {
     fn clone(&self) -> Self {
         HttpServer {
@@ -90,9 +90,9 @@ impl<S, R> Clone for HttpServer<S, R>
 }
 
 impl<T> Decode for Request<T>
-    where
-        T: Decode,
-        <T as Decode>::Error: 'static,
+where
+    T: Decode,
+    <T as Decode>::Error: 'static,
 {
     type Error = Error;
     type State = DecodeState<T::State>;
@@ -101,8 +101,8 @@ impl<T> Decode for Request<T>
         data: &mut BytesMut,
         mut state: Self::State,
     ) -> Result<Self, DecodeError<Self::Error, Self::State>>
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         loop {
             match state.state {
@@ -138,8 +138,8 @@ impl<T> Decode for Request<T>
 }
 
 impl<T> Encode for Response<T>
-    where
-        T: Encode,
+where
+    T: Encode,
 {
     type Error = Error;
 
@@ -170,8 +170,8 @@ impl Default for State {
 }
 
 impl<S, R> Default for HttpServer<S, R>
-    where
-        R: Decode + Send + Sync,
+where
+    R: Decode + Send + Sync,
 {
     fn default() -> Self {
         HttpServer {
@@ -187,7 +187,6 @@ impl<T> From<Error> for DecodeError<Error, DecodeState<T>> {
         DecodeError::Err(e)
     }
 }
-
 
 fn read_header<T>(
     data: &mut BytesMut,
@@ -232,15 +231,15 @@ fn read_header<T>(
 }
 
 fn start_with_method(x: &[u8]) -> bool {
-    x.starts_with(Method::GET.as_str().as_bytes()) ||
-        x.starts_with(Method::POST.as_str().as_bytes()) ||
-        x.starts_with(Method::DELETE.as_str().as_bytes()) ||
-        x.starts_with(Method::PUT.as_str().as_bytes()) ||
-        x.starts_with(Method::HEAD.as_str().as_bytes()) ||
-        x.starts_with(Method::OPTIONS.as_str().as_bytes()) ||
-        x.starts_with(Method::CONNECT.as_str().as_bytes()) ||
-        x.starts_with(Method::PATCH.as_str().as_bytes()) ||
-        x.starts_with(Method::TRACE.as_str().as_bytes())
+    x.starts_with(Method::GET.as_str().as_bytes())
+        || x.starts_with(Method::POST.as_str().as_bytes())
+        || x.starts_with(Method::DELETE.as_str().as_bytes())
+        || x.starts_with(Method::PUT.as_str().as_bytes())
+        || x.starts_with(Method::HEAD.as_str().as_bytes())
+        || x.starts_with(Method::OPTIONS.as_str().as_bytes())
+        || x.starts_with(Method::CONNECT.as_str().as_bytes())
+        || x.starts_with(Method::PATCH.as_str().as_bytes())
+        || x.starts_with(Method::TRACE.as_str().as_bytes())
 }
 
 fn read_request<T>(
@@ -249,7 +248,10 @@ fn read_request<T>(
 ) -> Result<DecodeState<T>, DecodeError<Error, DecodeState<T>>> {
     let (mut raw_status, mut state) = find_eol(data, state)?;
 
-    let method_start = raw_status.windows(7).enumerate().find(|(_i, x)| start_with_method(x));
+    let method_start = raw_status
+        .windows(7)
+        .enumerate()
+        .find(|(_i, x)| start_with_method(x));
     if method_start.is_none() {
         return Err(DecodeError::Incomplete(state));
     }
@@ -266,7 +268,7 @@ fn read_request<T>(
 
     let uri_end = raw_status.iter().enumerate().find(|(_i, x)| **x == b' ');
     if uri_end.is_none() {
-        return Err(DecodeError::Err(super::Error::InvalidRequestLine))
+        return Err(DecodeError::Err(super::Error::InvalidRequestLine));
     }
     let uri_end = uri_end.unwrap().0;
     state.builder = state.builder.uri(&raw_status[..uri_end]);

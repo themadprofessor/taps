@@ -1,7 +1,7 @@
 use bytes::{Buf, BytesMut};
 use http::header::{HeaderName, InvalidHeaderName, InvalidHeaderValue};
 use http::status::InvalidStatusCode;
-use http::{HeaderValue, Request, StatusCode, Version, Response};
+use http::{HeaderValue, Request, Response, StatusCode, Version};
 use log::trace;
 use snafu::Snafu;
 
@@ -73,8 +73,6 @@ pub enum Error {
     },
 }
 
-
-
 fn bytes_to_ver(raw: &[u8]) -> Result<Version, Error> {
     match raw {
         b"0.9" => Ok(Version::HTTP_09),
@@ -116,7 +114,12 @@ fn write_response_line<T>(res: &Response<T>, data: &mut BytesMut) {
     data.extend_from_slice(version_bytes(res.version()));
     data.extend_from_slice(b" ");
     data.extend_from_slice(res.status().as_str().as_bytes());
-    data.extend_from_slice(res.status().canonical_reason().unwrap_or_default().as_bytes());
+    data.extend_from_slice(
+        res.status()
+            .canonical_reason()
+            .unwrap_or_default()
+            .as_bytes(),
+    );
     data.extend_from_slice(b"\r\n");
 }
 

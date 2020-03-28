@@ -24,26 +24,29 @@ pub enum Error {
 #[async_trait]
 pub trait Endpoint: Send + 'static {
     type Error: StdSend + StdError;
+    type Iter: Iterator<Item = SocketAddr> + StdSend;
 
     /// Attempt to resolve this endpoint into a collection of SockerAddrs.
-    async fn resolve(self) -> Result<Vec<SocketAddr>, Self::Error>;
+    async fn resolve(self) -> Result<Self::Iter, Self::Error>;
 }
 
 #[async_trait]
 impl Endpoint for SocketAddr {
     type Error = ::std::convert::Infallible;
+    type Iter = ::std::iter::Once<SocketAddr>;
 
-    async fn resolve(self) -> Result<Vec<SocketAddr>, Self::Error> {
-        Ok(vec![self])
+    async fn resolve(self) -> Result<Self::Iter, Self::Error> {
+        Ok(::std::iter::once(self))
     }
 }
 
 #[async_trait]
 impl Endpoint for () {
     type Error = Error;
+    type Iter = ::std::iter::Once<SocketAddr>;
 
     #[allow(clippy::unit_arg)]
-    async fn resolve(self) -> Result<Vec<SocketAddr>, Self::Error> {
+    async fn resolve(self) -> Result<Self::Iter, Self::Error> {
         Err(Error::MissingEndpoint)
     }
 }
@@ -51,17 +54,15 @@ impl Endpoint for () {
 #[async_trait]
 impl<T> Endpoint for (T, u16)
 where
-    T: AsRef<str> + StdSend + 'static,
+    T: AsRef<str> + StdSend + Sync + 'static,
 {
     type Error = Error;
+    type Iter = impl Iterator<Item = SocketAddr>;
 
-    async fn resolve(self) -> Result<Vec<SocketAddr>, Self::Error> {
+    async fn resolve(self) -> Result<Self::Iter, Self::Error> {
         task::spawn_blocking(move || {
-            dns_lookup::lookup_host(self.0.as_ref()).map(|v| {
-                v.into_iter()
-                    .map(|ip| SocketAddr::from((ip, self.1)))
-                    .collect::<Vec<_>>()
-            })
+            dns_lookup::lookup_host(self.0.as_ref())
+                .map(move |v| v.into_iter().map(move |ip| SocketAddr::from((ip, self.1))))
         })
         .await
         .with_context(|| Join)?

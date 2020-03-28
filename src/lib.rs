@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 #![forbid(unsafe_code)]
+#![feature(type_alias_impl_trait)]
 
 pub use codec::*;
 pub use connection::Connection;

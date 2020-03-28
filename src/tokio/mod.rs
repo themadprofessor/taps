@@ -54,7 +54,7 @@ impl Implementation for Tokio {
             .map_err(box_error)
             .with_context(|| crate::tokio::error::Resolve)
             .map_err(box_error)
-            .map(|l| *l.get(0).unwrap())
+            .map(|mut l| l.next().unwrap())
             .with_context(|| crate::error::Listen)?;
         let remote_addr = match remote {
             Some(r) => Some(
@@ -63,7 +63,7 @@ impl Implementation for Tokio {
                     .map_err(box_error)
                     .with_context(|| crate::tokio::error::Resolve)
                     .map_err(box_error)
-                    .map(|l| *l.get(0).unwrap())
+                    .map(|mut l| l.next().unwrap())
                     .with_context(|| crate::error::Listen)?,
             ),
             None => None,
