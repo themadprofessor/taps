@@ -19,6 +19,7 @@ use std::net::SocketAddr;
 use tokio::net::ToSocketAddrs;
 use std::sync::Arc;
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Tokio;
 
 #[async_trait]
