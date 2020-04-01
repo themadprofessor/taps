@@ -8,7 +8,7 @@ mod tcp;
 pub(crate) async fn open_listener<F>(
     addr: SocketAddr,
     remote: Option<SocketAddr>,
-    props: &TransportProperties,
+    props: TransportProperties,
     framer: F,
 ) -> Result<Box<dyn Listener<F, Item = Result<Box<dyn Connection<F>>, crate::error::Error>>>, Error>
 where

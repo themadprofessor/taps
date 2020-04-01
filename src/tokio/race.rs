@@ -28,7 +28,7 @@ async fn add_delay(addr: SocketAddr, props: Arc<TransportProperties>) -> Result<
 
 pub async fn race<E, F>(
     endpoint: E,
-    props: Arc<TransportProperties>,
+    props: TransportProperties,
     framer: F,
 ) -> Result<Box<dyn crate::Connection<F>>, Error>
 where
@@ -36,6 +36,7 @@ where
     <E as Endpoint>::Error: 'static,
     F: Framer,
 {
+    let props = Arc::new(props);
     debug!("racing");
     ::futures::future::select_ok(
         endpoint

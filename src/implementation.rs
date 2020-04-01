@@ -2,7 +2,6 @@ use crate::error::Error;
 use crate::properties::TransportProperties;
 use crate::{Connection, Endpoint, Framer, Listener};
 use async_trait::async_trait;
-use std::sync::Arc;
 
 #[async_trait]
 pub trait Implementation {
@@ -10,7 +9,7 @@ pub trait Implementation {
         framer: F,
         local: Option<L>,
         remote: R,
-        props: Arc<TransportProperties>,
+        props: TransportProperties,
     ) -> Result<Box<dyn Connection<F>>, Error>
     where
         F: Framer,
@@ -21,7 +20,7 @@ pub trait Implementation {
         framer: F,
         local: L,
         remote: Option<R>,
-        props: Arc<TransportProperties>,
+        props: TransportProperties,
     ) -> Result<Box<dyn Listener<F, Item = Result<Box<dyn Connection<F>>, Error>>>, Error>
     where
         F: Framer + Clone + Unpin,

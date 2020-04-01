@@ -7,7 +7,6 @@ use crate::Framer;
 use crate::Listener;
 use snafu::ResultExt;
 use std::marker::PhantomData;
-use std::sync::Arc;
 
 #[cfg(feature = "tokio-impl")]
 pub type DefaultImpl = crate::tokio::Tokio;
@@ -42,7 +41,7 @@ where
     local: L,
     remote: R,
     framer: F,
-    trans: Arc<TransportProperties>,
+    trans: TransportProperties,
     _phantom: PhantomData<I>,
 }
 
@@ -58,7 +57,7 @@ where
         Preconnection {
             local: NoEndpoint,
             remote: NoEndpoint,
-            trans: Arc::new(props),
+            trans: props,
             framer,
             _phantom: PhantomData,
         }
@@ -74,7 +73,7 @@ where
         Preconnection {
             local: NoEndpoint,
             remote: NoEndpoint,
-            trans: Arc::new(props),
+            trans: props,
             framer,
             _phantom: PhantomData,
         }
@@ -124,8 +123,8 @@ where
         &self.trans
     }
 
-    pub fn transport_properties_mut(&mut self) -> Option<&mut TransportProperties> {
-        Arc::get_mut(&mut self.trans)
+    pub fn transport_properties_mut(&mut self) -> &mut TransportProperties {
+        &mut self.trans
     }
 }
 

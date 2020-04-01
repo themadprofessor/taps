@@ -17,7 +17,6 @@ use async_trait::async_trait;
 use snafu::ResultExt;
 use std::net::SocketAddr;
 use tokio::net::ToSocketAddrs;
-use std::sync::Arc;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Tokio;
@@ -28,7 +27,7 @@ impl Implementation for Tokio {
         framer: F,
         _local: Option<L>,
         remote: R,
-        props: Arc<TransportProperties>,
+        props: TransportProperties,
     ) -> Result<Box<dyn crate::Connection<F>>, Error>
     where
         F: Framer,
@@ -45,7 +44,7 @@ impl Implementation for Tokio {
         framer: F,
         local: L,
         remote: Option<R>,
-        props: Arc<TransportProperties>,
+        props: TransportProperties,
     ) -> Result<Box<dyn Listener<F, Item = Result<Box<dyn crate::Connection<F>>, Error>>>, Error>
     where
         F: Framer + Clone + Unpin,
@@ -73,7 +72,7 @@ impl Implementation for Tokio {
             None => None,
         };
 
-        listener::open_listener(local_addr, remote_addr, props.as_ref(), framer)
+        listener::open_listener(local_addr, remote_addr, props, framer)
             .await
             .map_err(box_error)
             .with_context(|| crate::error::Listen)
